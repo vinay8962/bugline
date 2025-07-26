@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Link } from "lucide-react";
+import { NavLink } from "react-router-dom";
 
 const Login = ({ onClick }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -49,16 +50,20 @@ const Login = ({ onClick }) => {
           Sign In
         </button>
       </form>
-
-      <p className="text-center text-sm text-gray-400">
-        Don't have an account?{" "}
-        <a
-          onClick={onClick}
-          className="text-[#2057cd] hover:underline cursor-pointer"
-        >
-          Sign up
-        </a>
-      </p>
+      <div className="text-center mt-4 space-y-2">
+        <p className="text-sm text-gray-400 hover:text-gray-500/80 font-medium transition-colors block cursor-pointer">
+          Forgot your password?
+        </p>
+        <p className="text-center text-sm text-gray-400">
+          Don't have an account?{" "}
+          <a
+            onClick={onClick}
+            className="text-[#2057cd] hover:underline cursor-pointer"
+          >
+            Sign up
+          </a>
+        </p>
+      </div>
     </div>
   );
 };
