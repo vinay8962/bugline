@@ -1,13 +1,36 @@
 import React, { useEffect, useState } from "react";
-import { Bug, Bell, Plus, Search, MessageSquare } from "lucide-react";
+import { Bug, Bell, Plus, Search, MessageSquare, LogOut } from "lucide-react";
 import BugStats from "../../components/BugStats";
 import AddEmployee from "../Employee/AddEmployee";
+import { googleLogout } from "@react-oauth/google";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const navigate = useNavigate();
+
+  const logout = () => {
+    try {
+      // Google logout
+      googleLogout();
+
+      // Clear all stored user data
+      localStorage.removeItem("user");
+      localStorage.removeItem("access_token");
+
+      navigate("/");
+
+      console.log("Logout successful");
+
+      return true;
+    } catch (error) {
+      console.error("Logout error:", error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     setTimeout(() => {
@@ -130,6 +153,12 @@ const Dashboard = () => {
               >
                 <Plus className="h-4 w-4" />
                 Add Employee
+              </button>
+              <button
+                onClick={logout}
+                className="flex items-center justify-center border border-gray-800 px-4 py-3 w-32 gap-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-gray-800/50 cursor-pointer transition"
+              >
+                <LogOut className="h-4 w-4" /> Logout
               </button>
             </div>
           </div>
