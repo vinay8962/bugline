@@ -1,5 +1,6 @@
 {
-  "name": "bugline-backend",
+  "name": "@bugline/server",
+  "private": true,
   "version": "1.0.0",
   "description": "Backend API for BugLine - Bug tracking and management system",
   "main": "src/server.js",
