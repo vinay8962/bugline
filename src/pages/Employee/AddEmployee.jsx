@@ -1,40 +1,13 @@
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-
-const backdrop = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-};
-
-const modal = {
-  hidden: { scale: 0, opacity: 0 },
-  visible: {
-    scale: 1,
-    opacity: 1,
-    transition: { type: "spring", stiffness: 200, damping: 20 },
-  },
-  exit: {
-    scale: 0,
-    opacity: 0,
-    transition: { duration: 0.3 },
-  },
-};
+import { AnimatePresence } from "framer-motion";
 
 const AddEmployee = ({ onClose }) => {
   return (
     <AnimatePresence>
-      <motion.div
-        variants={backdrop}
-        initial="hidden"
-        animate="visible"
-        exit="hidden"
+      <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
       >
-        <motion.div
-          variants={modal}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
+        <div
           className="relative max-w-xl w-full mx-4 p-6 bg-primary text-white shadow-lg rounded-xl border border-gray-700"
         >
           {/* Close Button */}
@@ -166,8 +139,8 @@ const AddEmployee = ({ onClose }) => {
               </button>
             </div>
           </form>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </AnimatePresence>
   );
 };
