@@ -69,6 +69,13 @@ export const requireCompanyAdmin = async (req, res, next) => {
   try {
     const { companyId } = req.params;
 
+    if (!companyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Company ID is required",
+      });
+    }
+
     const { data: membership, error } = await supabase
       .from("memberships")
       .select("*")
@@ -82,6 +89,14 @@ export const requireCompanyAdmin = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Company admin access required",
+      });
+    }
+
+    // Check if user's email is verified
+    if (!req.user.email_verified) {
+      return res.status(403).json({
+        success: false,
+        message: "Email verification required to perform admin actions",
       });
     }
 

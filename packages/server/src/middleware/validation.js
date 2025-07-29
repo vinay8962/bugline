@@ -123,3 +123,49 @@ export const uuidParamSchema = Joi.object({
   userId: Joi.string().uuid().required(),
   companyId: Joi.string().uuid().required(),
 });
+
+// Admin validation schemas
+export const adminSchemas = {
+  createUser: Joi.object({
+    email: Joi.string().email().required(),
+    full_name: Joi.string().min(2).max(100).optional(),
+    role: Joi.string()
+      .valid("admin", "dev", "bug_reporter", "viewer")
+      .required(),
+    send_invitation: Joi.boolean().default(true),
+  }),
+
+  bulkCreateUsers: Joi.object({
+    users: Joi.array()
+      .items(
+        Joi.object({
+          email: Joi.string().email().required(),
+          full_name: Joi.string().min(2).max(100).optional(),
+          role: Joi.string()
+            .valid("admin", "dev", "bug_reporter", "viewer")
+            .required(),
+        })
+      )
+      .min(1)
+      .max(50)
+      .required(),
+  }),
+
+  updateUserRole: Joi.object({
+    role: Joi.string()
+      .valid("admin", "dev", "bug_reporter", "viewer")
+      .required(),
+  }),
+
+  suspendUser: Joi.object({
+    reason: Joi.string().max(500).optional(),
+  }),
+
+  resendVerification: Joi.object({
+    companyId: Joi.string().uuid().optional(),
+  }),
+
+  verifyEmail: Joi.object({
+    token: Joi.string().required(),
+  }),
+};
