@@ -4,16 +4,40 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import AddEmployee from "./pages/Employee/AddEmployee";
-// import EmailVerify from "./components/EmailVerify";
+import Profile from "./pages/Profile";
+import PrivateRoute from "./components/Private/PrivateRoute";
 const App = () => {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/addemployee" element={<AddEmployee />} />
-        {/* <Route path="/verify-email" element={<EmailVerify />} /> */}
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />{" "}
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/addemployee"
+          element={
+            <PrivateRoute>
+              {" "}
+              <AddEmployee />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          }
+        />
 
         {/* Add more routes here as needed */}
       </Routes>

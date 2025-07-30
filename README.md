@@ -372,82 +372,111 @@ BugLine.init({
 });
 ```
 
-## 🗄️ Database Schema
+## 🗄️ Database Schema (Simplified MVP)
 
 ### Core Tables
 
-```sql
--- Users with enhanced profiles
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    github_username VARCHAR(100),
-    timezone VARCHAR(50) DEFAULT 'UTC',
-    skills TEXT[],
-    notification_preferences JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+- **User**: System users with global roles (SUPER_ADMIN or USER)
+- **Company**: Organizations that manage projects and bugs
+- **CompanyUser**: User-company relationships with company-specific roles
+- **Project**: Bug tracking projects within companies
+- **Bug**: Simple bug reports with essential fields only
 
--- Multi-tenant companies
-CREATE TABLE companies (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(100) UNIQUE NOT NULL,
-    subscription_plan VARCHAR(50) DEFAULT 'free',
-    github_org_name VARCHAR(100),
-    settings JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+### Prisma Model Overview
 
--- User-company relationships with roles
-CREATE TABLE memberships (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id),
-    company_id UUID REFERENCES companies(id),
-    role VARCHAR(50) NOT NULL, -- admin, developer, qa, viewer
-    permissions JSONB DEFAULT '{}',
-    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+```prisma
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  full_name     String
+  global_role   String   @default("USER") // SUPER_ADMIN, USER
+  created_at    DateTime @default(now())
+  
+  company_users CompanyUser[]
+  assigned_bugs Bug[]     @relation("AssignedBugs")
+}
 
--- Projects within companies
-CREATE TABLE projects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID REFERENCES companies(id),
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(100) NOT NULL,
-    github_repo_url VARCHAR(500),
-    widget_config JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+model Company {
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  created_at DateTime @default(now())
+  
+  company_users CompanyUser[]
+  projects      Project[]
+}
 
--- Bug reports with comprehensive metadata
-CREATE TABLE bugs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID REFERENCES projects(id),
-    title VARCHAR(500) NOT NULL,
-    description TEXT NOT NULL,
-    severity VARCHAR(20) DEFAULT 'medium', -- critical, high, medium, low
-    status VARCHAR(20) DEFAULT 'open', -- open, in_progress, fixed, closed
-    assigned_to UUID REFERENCES users(id),
-    reporter_email VARCHAR(255),
-    user_agent TEXT,
-    browser_info JSONB,
-    page_url VARCHAR(1000),
-    screenshots TEXT[],
-    github_issue_url VARCHAR(500),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+model CompanyUser {
+  id         String   @id @default(uuid())
+  user_id    String
+  company_id String
+  role       String   // ADMIN, DEVELOPER, QA, OTHERS
+  created_at DateTime @default(now())
+  
+  user    User    @relation(fields: [user_id], references: [id])
+  company Company @relation(fields: [company_id], references: [id])
+  
+  @@unique([user_id, company_id])
+}
+
+model Project {
+  id         String   @id @default(uuid())
+  company_id String
+  name       String
+  slug       String
+  created_at DateTime @default(now())
+  
+  company Company @relation(fields: [company_id], references: [id])
+  bugs    Bug[]
+  
+  @@unique([company_id, slug])
+}
+
+model Bug {
+  id             String   @id @default(uuid())
+  project_id     String
+  title          String
+  description    String
+  status         String   @default("open") // open, in_progress, resolved, closed
+  priority       String   @default("medium") // low, medium, high, critical
+  reporter_email String?
+  assigned_to    String?
+  created_at     DateTime @default(now())
+  
+  project  Project @relation(fields: [project_id], references: [id])
+  assignee User?   @relation("AssignedBugs", fields: [assigned_to], references: [id])
+}
 ```
+
+### Role-Based Access Control (RBAC)
+
+**System-Level Roles:**
+- `SUPER_ADMIN`: System-wide administrative access
+- `USER`: Standard user access
+
+**Company-Level Roles:**
+- `ADMIN`: Company management, user management, project management
+- `DEVELOPER`: Bug resolution, status updates, code changes
+- `QA`: Bug reporting, testing, quality assurance
+- `OTHERS`: General access, bug reporting, commenting (includes anonymous users)
 
 ### Key Relationships
 
-- **Users** belong to multiple **Companies** via **Memberships**
-- **Companies** contain multiple **Projects**
-- **Projects** contain multiple **Bugs**
-- **Bugs** can be assigned to **Users** and linked to **GitHub Issues**
+- Users can belong to multiple companies via `company_users` table
+- SUPER_ADMIN users don't belong to any specific company
+- Companies can have multiple projects and members
+- Projects belong to a company and contain bugs
+- Bugs can be reported by anonymous users (via email) or assigned to registered users
+- Anonymous bug reporters are treated as `OTHERS` role
+
+### Schema Benefits
+
+- **Simplified MVP**: Only essential fields for launch
+- **Clean separation**: System admins vs company users
+- **Flexible reporting**: Supports both registered and anonymous bug reporting
+- **Scalable**: Multi-company, multi-project architecture
+- **RBAC ready**: Clear role hierarchy for permissions
 
 ## 🚀 Deployment
 
@@ -527,6 +556,8 @@ npm run test:coverage --workspace=@bugline/server
 - **E2E Tests**: Critical business scenarios
 - **API Tests**: All endpoint functionality
 - **Widget Tests**: Cross-browser compatibility
+- **RBAC Tests**: Permission-based access control
+- **Anonymous Reporting Tests**: Widget bug submission without registration
 
 ## 🤝 Contributing
 

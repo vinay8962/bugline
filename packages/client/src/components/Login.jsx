@@ -2,17 +2,16 @@ import React, { useState } from "react";
 import { Eye, EyeOff, Link } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
+import { setGoogleUser } from "../features/auth/authSlice";
+import { useDispatch } from "react-redux";
 
 const Login = ({ onClick }) => {
+  const dispatch = useDispatch();
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-
   const login = useGoogleLogin({
     onSuccess: async (credentialResponse) => {
-      console.log("Login successful:", credentialResponse);
-
       try {
-        // Fetch user profile information using the access token
         const response = await fetch(
           `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${credentialResponse.access_token}`,
           {
@@ -24,13 +23,15 @@ const Login = ({ onClick }) => {
 
         if (response.ok) {
           const userInfo = await response.json();
-          console.log("User Info:", userInfo);
 
-          // Store user info (you can use localStorage, context, or your preferred state management)
-          localStorage.setItem("user", JSON.stringify(userInfo));
-          localStorage.setItem("access_token", credentialResponse.access_token);
+          // 🔁 Dispatch to Redux
+          dispatch(
+            setGoogleUser({
+              user: userInfo,
+              accessToken: credentialResponse.access_token,
+            })
+          );
 
-          // Navigate to dashboard
           navigate("/dashboard");
         } else {
           console.error("Failed to fetch user info:", response.statusText);
@@ -38,9 +39,6 @@ const Login = ({ onClick }) => {
       } catch (error) {
         console.error("Error fetching user info:", error);
       }
-    },
-    onError: (error) => {
-      console.log("Login Failed:", error);
     },
   });
 

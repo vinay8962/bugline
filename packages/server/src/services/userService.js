@@ -1,250 +1,271 @@
-import { supabase, TABLES } from "../config/database.js";
-import { NotFoundError, ConflictError } from "../middleware/errorHandler.js";
+import { prisma } from '../config/prisma.js';
+import { 
+  handlePrismaError, 
+  createError,
+  validateUserData 
+} from '../utils/dbHelpers.js';
+import { 
+  verifyUserPassword as verifyPassword,
+  hashPassword 
+} from '../utils/businessHelpers.js';
 
-export class UserService {
-  // Get all users with pagination and search
-  static async getUsers(
-    page = 1,
-    limit = 10,
-    search = "",
-    sortBy = "created_at",
-    sortOrder = "desc"
-  ) {
-    try {
-      let query = supabase.from(TABLES.USERS).select("*", { count: "exact" });
-
-      // Apply search filter
-      if (search) {
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+// Authentication functions
+export const createUser = async (userData) => {
+  try {
+    validateUserData(userData);
+    
+    // Hash password before storing
+    const hashedPassword = await hashPassword(userData.password);
+    
+    const user = await prisma.user.create({
+      data: {
+        email: userData.email,
+        password_hash: hashedPassword,
+        full_name: userData.full_name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+        global_role: userData.global_role || 'USER'
       }
-
-      // Apply pagination and sorting
-      const offset = (page - 1) * limit;
-      query = query
-        .order(sortBy, { ascending: sortOrder === "asc" })
-        .range(offset, offset + limit - 1);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      return {
-        users: data,
-        pagination: {
-          page,
-          limit,
-          total: count,
-          totalPages: Math.ceil(count / limit),
-        },
-      };
-    } catch (error) {
-      throw error;
-    }
+    });
+    
+    // Remove password from response
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error) {
+    throw handlePrismaError(error);
   }
+};
 
-  // Get user by ID
-  static async getUserById(userId) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.USERS)
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) throw error;
-      if (!data) throw new NotFoundError("User not found");
-
-      return data;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Get user by email
-  static async getUserByEmail(email) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.USERS)
-        .select("*")
-        .eq("email", email)
-        .single();
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Create user profile
-  static async createUser(userData) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.USERS)
-        .insert([userData])
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === "23505") {
-          throw new ConflictError("User already exists");
+export const getUserByEmail = async (email) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        company_users: {
+          include: {
+            company: true
+          }
         }
-        throw error;
       }
-
-      return data;
-    } catch (error) {
-      throw error;
-    }
+    });
+    
+    return user;
+  } catch (error) {
+    throw handlePrismaError(error);
   }
+};
 
-  // Update user profile
-  static async updateUser(userId, updateData) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.USERS)
-        .update(updateData)
-        .eq("id", userId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (!data) throw new NotFoundError("User not found");
-
-      return data;
-    } catch (error) {
-      throw error;
+export const verifyUserPassword = async (email, password) => {
+  try {
+    const user = await getUserByEmail(email);
+    if (!user) {
+      throw createError('User not found', 404);
     }
-  }
-
-  // Update user global role
-  static async updateUserRole(userId, globalRole) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.USERS)
-        .update({ global_role: globalRole })
-        .eq("id", userId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (!data) throw new NotFoundError("User not found");
-
-      return data;
-    } catch (error) {
-      throw error;
+    
+    const isValid = await verifyPassword(password, user.password_hash);
+    if (!isValid) {
+      throw createError('Invalid password', 401);
     }
+    
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error) {
+    throw handlePrismaError(error);
   }
+};
 
-  // Delete user (soft delete by setting status)
-  static async deleteUser(userId) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.USERS)
-        .update({
-          updated_at: new Date().toISOString(),
-          // You might want to add a deleted_at field for soft deletes
-        })
-        .eq("id", userId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (!data) throw new NotFoundError("User not found");
-
-      return { message: "User deleted successfully" };
-    } catch (error) {
-      throw error;
+// User management functions
+export const getUserById = async (userId) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        company_users: {
+          include: {
+            company: true
+          }
+        }
+      }
+    });
+    
+    if (!user) {
+      throw createError('User not found', 404);
     }
+    
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error) {
+    throw handlePrismaError(error);
   }
+};
 
-  // Get user's companies and memberships
-  static async getUserCompanies(userId) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.MEMBERSHIPS)
-        .select(
-          `
-          *,
-          companies (*)
-        `
-        )
-        .eq("user_id", userId)
-        .eq("status", "active");
+export const updateUser = async (userId, updateData) => {
+  try {
+    const transformedData = {};
+    
+    if (updateData.email) transformedData.email = updateData.email;
+    if (updateData.full_name) transformedData.full_name = updateData.full_name;
+    if (updateData.global_role) transformedData.global_role = updateData.global_role;
+    
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: transformedData
+    });
+    
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error) {
+    throw handlePrismaError(error);
+  }
+};
 
-      if (error) throw error;
+export const deleteUser = async (userId) => {
+  try {
+    await prisma.user.delete({
+      where: { id: userId }
+    });
+    
+    return { message: 'User deleted successfully' };
+  } catch (error) {
+    throw handlePrismaError(error);
+  }
+};
 
-      return data;
-    } catch (error) {
-      throw error;
+export const getAllUsers = async (page = 1, limit = 10, filters = {}) => {
+  try {
+    const skip = (page - 1) * limit;
+    const where = {};
+    
+    if (filters.global_role) {
+      where.global_role = filters.global_role;
     }
+    
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          company_users: {
+            include: {
+              company: true
+            }
+          }
+        },
+        orderBy: { created_at: 'desc' }
+      }),
+      prisma.user.count({ where })
+    ]);
+    
+    // Remove passwords from response
+    const usersWithoutPasswords = users.map(user => {
+      const { password_hash, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    });
+    
+    return {
+      users: usersWithoutPasswords,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    };
+  } catch (error) {
+    throw handlePrismaError(error);
   }
+};
 
-  // Get user's company membership details
-  static async getUserCompanyMembership(userId, companyId) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.MEMBERSHIPS)
-        .select("*")
-        .eq("user_id", userId)
-        .eq("company_id", companyId)
-        .single();
-
-      if (error) throw error;
-      if (!data) throw new NotFoundError("Membership not found");
-
-      return data;
-    } catch (error) {
-      throw error;
-    }
+export const searchUsers = async (searchTerm, limit = 10) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          {
+            full_name: {
+              contains: searchTerm,
+              mode: 'insensitive'
+            }
+          },
+          {
+            email: {
+              contains: searchTerm,
+              mode: 'insensitive'
+            }
+          }
+        ]
+      },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        global_role: true,
+        created_at: true
+      },
+      take: limit,
+      orderBy: { created_at: 'desc' }
+    });
+    
+    return users;
+  } catch (error) {
+    throw handlePrismaError(error);
   }
+};
 
-  // Search users
-  static async searchUsers(query, limit = 10) {
-    try {
-      const { data, error } = await supabase
-        .from(TABLES.USERS)
-        .select("id, full_name, email, avatar_url")
-        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
-        .limit(limit);
-
-      if (error) throw error;
-
-      return data;
-    } catch (error) {
-      throw error;
-    }
+// Password management
+export const updateUserPassword = async (userId, newPassword) => {
+  try {
+    // Hash the new password
+    const hashedPassword = await hashPassword(newPassword);
+    
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        password_hash: hashedPassword
+      }
+    });
+    
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error) {
+    throw handlePrismaError(error);
   }
+};
 
-  // Get user statistics
-  static async getUserStats(userId) {
-    try {
-      // Get user's company count
-      const { count: companyCount, error: companyError } = await supabase
-        .from(TABLES.MEMBERSHIPS)
-        .select("*", { count: "exact" })
-        .eq("user_id", userId)
-        .eq("status", "active");
-
-      if (companyError) throw companyError;
-
-      // Get user's admin company count
-      const { count: adminCount, error: adminError } = await supabase
-        .from(TABLES.MEMBERSHIPS)
-        .select("*", { count: "exact" })
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .eq("status", "active");
-
-      if (adminError) throw adminError;
-
-      return {
-        totalCompanies: companyCount,
-        adminCompanies: adminCount,
-        memberCompanies: companyCount - adminCount,
-      };
-    } catch (error) {
-      throw error;
-    }
+// Role management
+export const updateUserRole = async (userId, newRole) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        global_role: newRole
+      }
+    });
+    
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error) {
+    throw handlePrismaError(error);
   }
-}
+};
+
+// Get user companies
+export const getUserCompanies = async (userId) => {
+  try {
+    const companyUsers = await prisma.companyUser.findMany({
+      where: { 
+        user_id: userId
+      },
+      include: {
+        company: true
+      }
+    });
+    
+    return companyUsers.map(cu => ({
+      ...cu.company,
+      role: cu.role,
+      joined_at: cu.created_at
+    }));
+  } catch (error) {
+    throw handlePrismaError(error);
+  }
+};
