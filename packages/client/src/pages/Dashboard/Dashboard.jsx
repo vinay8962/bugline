@@ -34,6 +34,7 @@ const Dashboard = () => {
       document.removeEventListener("mousedown", handler);
     };
   }, []);
+
   const logout = () => {
     try {
       // Google logout
@@ -172,6 +173,9 @@ const Dashboard = () => {
               <div className="relative inline-block text-left" ref={menuRef}>
                 <button
                   onClick={() => setOpen(!open)}
+                  aria-expanded={open}
+                  aria-haspopup="true"
+                  aria-label="User settings menu"
                   className="p-3 rounded-xl border border-gray-600/40 bg-background/50 backdrop-blur hover:bg-gray-700 "
                 >
                   <Settings className="h-4 w-4 text-white" />
@@ -180,16 +184,20 @@ const Dashboard = () => {
                   <div className="absolute right-0 mt-2 w-56 bg-primary border border-gray-700 rounded-md shadow-lg backdrop-blur-xl z-50 overflow-visible">
                     <ul className=" text-sm text-white">
                       <li>
-                        <p
+                        <button
                           onClick={() => setShowModal(true)}
-                          className="flex items-center px-4 py-2 hover:bg-gray-800"
+                          className="flex w-full items-center px-4 py-2 hover:bg-gray-800"
                         >
                           <UserPlus className="h-4 w-4 mr-2" /> Add Employee
-                        </p>
+                        </button>
                       </li>
                       <li>
-                        <Link className="flex items-center px-4 py-2 hover:bg-gray-800 text-white">
-                          <Plus className="h-4 w-4 mr-2" /> Add Company
+                        <Link
+                          onClick={(e) => e.preventDefault()}
+                          className="flex items-center px-4 py-2 hover:bg-gray-800 text-white opacity-50 cursor-not-allowed"
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Add Company (Coming
+                          Soon)
                         </Link>
                       </li>
                       <li>
