@@ -1,7 +1,8 @@
 import express from "express";
 import { UserController } from "../controllers/userController.js";
-import { authenticateToken, requireSuperAdmin } from "../middleware/auth.js";
+import { authenticateToken } from "../middleware/auth.js";
 import { validate, userSchemas } from "../middleware/validation.js";
+import { requireSuperAdmin } from "../middleware/superAdminValidator.js";
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ router.put(
   validate(userSchemas.updateProfile),
   UserController.updateCurrentUser
 );
-router.get("/me/companies", UserController.getCurrentUserCompanies);
+router.get("/me/companies", UserController.getUserCompanies);
 router.get("/me/stats", UserController.getCurrentUserStats);
 
 // User management routes (admin only)

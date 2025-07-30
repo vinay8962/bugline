@@ -1,7 +1,8 @@
 import express from "express";
 import { AdminController } from "../controllers/adminController.js";
-import { authenticateToken, requireCompanyAdmin } from "../middleware/auth.js";
+import { authenticateToken } from "../middleware/auth.js";
 import { validate, adminSchemas } from "../middleware/validation.js";
+import { requireSuperAdmin } from "../middleware/superAdminValidator.js";
 
 const router = express.Router();
 
@@ -9,52 +10,45 @@ const router = express.Router();
 router.post("/verify-email", AdminController.verifyEmail);
 
 // Protected routes - require authentication
-router.use(authenticateToken);
+router.use(authenticateToken, requireSuperAdmin);
 
 // Company admin routes - require company admin access
 router.post(
   "/companies/:companyId/users",
-  requireCompanyAdmin,
   validate(adminSchemas.createUser),
   AdminController.createUserForCompany
 );
 
 router.post(
   "/companies/:companyId/users/bulk",
-  requireCompanyAdmin,
   validate(adminSchemas.bulkCreateUsers),
   AdminController.bulkCreateUsers
 );
 
 router.get(
   "/companies/:companyId/users",
-  requireCompanyAdmin,
   AdminController.getCompanyTeamMembers
 );
 
 router.put(
   "/companies/:companyId/users/:userId/role",
-  requireCompanyAdmin,
   validate(adminSchemas.updateUserRole),
   AdminController.updateUserRole
 );
 
 router.delete(
   "/companies/:companyId/users/:userId",
-  requireCompanyAdmin,
   AdminController.removeUserFromCompany
 );
 
 router.put(
   "/companies/:companyId/users/:userId/suspend",
-  requireCompanyAdmin,
   validate(adminSchemas.suspendUser),
   AdminController.suspendUser
 );
 
 router.put(
-  "/companies/:companyId/users/:userId/reactivate",
-  requireCompanyAdmin,
+  "/companies/:companyId/users/:userId/reactivate", 
   AdminController.reactivateUser
 );
 
