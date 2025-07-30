@@ -13,7 +13,10 @@ import {
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  console.log(isLoading, error);
+  const mockUserData = {
     firstName: "John",
     lastName: "Doe",
     email: "john.doe@example.com",
@@ -25,7 +28,25 @@ const Profile = () => {
     joinDate: "2023-01-15",
     timezone: "America/Los_Angeles",
     avatar: "",
-  });
+  };
+
+  const [formData, setFormData] = useState(
+    process.env.NODE_ENV === "development"
+      ? mockUserData
+      : {
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          bio: "",
+          location: "",
+          company: "",
+          role: "",
+          joinDate: "",
+          timezone: "",
+          avatar: "",
+        }
+  );
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
@@ -34,10 +55,20 @@ const Profile = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Profile data:", formData);
-    setIsEditing(false);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // await updateUserProfile(formData);
+      console.log("Profile data:", formData); // Remove when API ready
+      setIsEditing(false);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -88,9 +119,30 @@ const Profile = () => {
               </div>
             )}
             {isEditing && (
-              <button className="absolute bottom-0 right-0 p-1 bg-primary border-gray-800 text-white rounded-full shadow cursor-pointer">
-                <Camera className="w-4 h-4" />
-              </button>
+              <>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const imageUrl = URL.createObjectURL(file);
+                      handleInputChange("avatar", imageUrl);
+                    }
+                  }}
+                  id="avatarUpload"
+                  style={{ display: "none" }}
+                />
+                <button
+                  onClick={() =>
+                    document.getElementById("avatarUpload").click()
+                  }
+                  type="button"
+                  className="absolute bottom-0 right-0 p-1 bg-primary border-gray-800 text-white rounded-full shadow cursor-pointer"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
           <h2 className="text-xl font-semibold">

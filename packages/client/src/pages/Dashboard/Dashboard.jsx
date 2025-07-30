@@ -13,6 +13,9 @@ import BugStats from "../../components/BugStats";
 import AddEmployee from "../Employee/AddEmployee";
 import { googleLogout } from "@react-oauth/google";
 import { useNavigate, Link } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { logoutUser } from "../../features/auth/authSlice";
+import useClickOutside from "../../hooks/useClickOutside";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -22,36 +25,24 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const menuRef = useRef();
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-    };
-  }, []);
+  const dispatch = useDispatch();
+  // Hook usage here
+  useClickOutside(menuRef, () => setOpen(false));
 
   const logout = () => {
     try {
       // Google logout
       googleLogout();
 
-      // Clear all stored user data
-      localStorage.removeItem("user");
-      localStorage.removeItem("access_token");
+      // Redux logout
+      dispatch(logoutUser());
 
+      // Navigate to login or home page
       navigate("/");
 
       console.log("Logout successful");
-
-      return true;
     } catch (error) {
       console.error("Logout error:", error);
-      return false;
     }
   };
 
