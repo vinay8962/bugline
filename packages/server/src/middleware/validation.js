@@ -1,125 +1,248 @@
-import Joi from "joi";
+import { body, param, query, validationResult } from 'express-validator';
 
-// Generic validation middleware
-export const validate = (schema) => {
-  return (req, res, next) => {
-    const { error } = schema.validate(req.body);
-
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        errors: error.details.map((detail) => ({
-          field: detail.path.join("."),
-          message: detail.message,
-        })),
-      });
-    }
-
-    next();
-  };
+// Validation error handler
+export const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array().map(error => ({
+        field: error.path,
+        message: error.msg,
+        value: error.value
+      }))
+    });
+  }
+  
+  next();
 };
 
-// User validation schemas
-export const userSchemas = {
-  updateProfile: Joi.object({
-    full_name: Joi.string().min(2).max(100).optional(),
-    phone: Joi.string()
-      .pattern(/^\+?[\d\s\-\(\)]+$/)
-      .optional(),
-    avatar_url: Joi.string().uri().optional(),
-    bio: Joi.string().max(500).optional(),
-    timezone: Joi.string().optional(),
-  }),
+// User validation rules
+export const validateUserRegistration = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Valid email is required'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+  body('full_name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Full name must be between 2 and 100 characters'),
+  handleValidationErrors
+];
 
-  updateGlobalRole: Joi.object({
-    global_role: Joi.string().valid("super_admin", "user").required(),
-  }),
-};
+export const validateUserLogin = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Valid email is required'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required'),
+  handleValidationErrors
+];
 
-// Company validation schemas
-export const companySchemas = {
-  create: Joi.object({
-    name: Joi.string().min(2).max(100).required(),
-    description: Joi.string().max(500).optional(),
-    logo_url: Joi.string().uri().optional(),
-    website: Joi.string().uri().optional(),
-    industry: Joi.string().max(100).optional(),
-    size: Joi.string()
-      .valid("startup", "small", "medium", "large", "enterprise")
-      .optional(),
-    settings: Joi.object().optional(),
-  }),
+export const validateUserUpdate = [
+  body('email')
+    .optional()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Valid email is required'),
+  body('full_name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Full name must be between 2 and 100 characters'),
+  body('global_role')
+    .optional()
+    .isIn(['USER', 'SUPER_ADMIN'])
+    .withMessage('Invalid global role'),
+  handleValidationErrors
+];
 
-  update: Joi.object({
-    name: Joi.string().min(2).max(100).optional(),
-    description: Joi.string().max(500).optional(),
-    logo_url: Joi.string().uri().optional(),
-    website: Joi.string().uri().optional(),
-    industry: Joi.string().max(100).optional(),
-    size: Joi.string()
-      .valid("startup", "small", "medium", "large", "enterprise")
-      .optional(),
-    settings: Joi.object().optional(),
-  }),
-};
+// Company validation rules
+export const validateCompanyCreation = [
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Company name must be between 2 and 100 characters'),
+  body('slug')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .matches(/^[a-z0-9-]+$/)
+    .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
+  handleValidationErrors
+];
 
-// Membership validation schemas
-export const membershipSchemas = {
-  create: Joi.object({
-    user_id: Joi.string().uuid().required(),
-    company_id: Joi.string().uuid().required(),
-    role: Joi.string()
-      .valid("admin", "dev", "bug_reporter", "viewer")
-      .required(),
-    title: Joi.string().max(100).optional(),
-    department: Joi.string().max(100).optional(),
-    permissions: Joi.object().optional(),
-  }),
+export const validateCompanyUpdate = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Company name must be between 2 and 100 characters'),
+  body('slug')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .matches(/^[a-z0-9-]+$/)
+    .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
+  handleValidationErrors
+];
 
-  update: Joi.object({
-    role: Joi.string()
-      .valid("admin", "dev", "bug_reporter", "viewer")
-      .optional(),
-    title: Joi.string().max(100).optional(),
-    department: Joi.string().max(100).optional(),
-    permissions: Joi.object().optional(),
-    status: Joi.string()
-      .valid("active", "inactive", "pending", "suspended")
-      .optional(),
-  }),
+// Project validation rules
+export const validateProjectCreation = [
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Project name must be between 2 and 100 characters'),
+  body('slug')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .matches(/^[a-z0-9-]+$/)
+    .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
+  handleValidationErrors
+];
 
-  invite: Joi.object({
-    email: Joi.string().email().required(),
-    role: Joi.string()
-      .valid("admin", "dev", "bug_reporter", "viewer")
-      .required(),
-    title: Joi.string().max(100).optional(),
-    department: Joi.string().max(100).optional(),
-    permissions: Joi.object().optional(),
-  }),
-};
+export const validateProjectUpdate = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Project name must be between 2 and 100 characters'),
+  body('slug')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .matches(/^[a-z0-9-]+$/)
+    .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
+  handleValidationErrors
+];
 
-// Query parameter validation
-export const querySchemas = {
-  pagination: Joi.object({
-    page: Joi.number().integer().min(1).default(1),
-    limit: Joi.number().integer().min(1).max(100).default(10),
-    search: Joi.string().max(100).optional(),
-    sort_by: Joi.string()
-      .valid("created_at", "name", "email", "role")
-      .optional(),
-    sort_order: Joi.string().valid("asc", "desc").default("desc"),
-  }),
-};
+// Bug validation rules
+export const validateBugCreation = [
+  body('project_id')
+    .isUUID()
+    .withMessage('Valid project ID is required'),
+  body('title')
+    .trim()
+    .isLength({ min: 5, max: 200 })
+    .withMessage('Bug title must be between 5 and 200 characters'),
+  body('description')
+    .trim()
+    .isLength({ min: 10, max: 2000 })
+    .withMessage('Bug description must be between 10 and 2000 characters'),
+  body('status')
+    .optional()
+    .isIn(['open', 'in_progress', 'resolved', 'closed'])
+    .withMessage('Invalid status'),
+  body('priority')
+    .optional()
+    .isIn(['low', 'medium', 'high', 'critical'])
+    .withMessage('Invalid priority'),
+  body('reporter_email')
+    .optional()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Valid reporter email is required'),
+  body('assigned_to')
+    .optional()
+    .isUUID()
+    .withMessage('Valid user ID is required for assignment'),
+  handleValidationErrors
+];
 
-// ID parameter validation
-export const idParamSchema = Joi.object({
-  id: Joi.string().uuid().required(),
-});
+export const validateBugUpdate = [
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ min: 5, max: 200 })
+    .withMessage('Bug title must be between 5 and 200 characters'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ min: 10, max: 2000 })
+    .withMessage('Bug description must be between 10 and 2000 characters'),
+  body('status')
+    .optional()
+    .isIn(['open', 'in_progress', 'resolved', 'closed'])
+    .withMessage('Invalid status'),
+  body('priority')
+    .optional()
+    .isIn(['low', 'medium', 'high', 'critical'])
+    .withMessage('Invalid priority'),
+  body('assigned_to')
+    .optional()
+    .isUUID()
+    .withMessage('Valid user ID is required for assignment'),
+  handleValidationErrors
+];
 
-// UUID parameter validation
-export const uuidParamSchema = Joi.object({
-  userId: Joi.string().uuid().required(),
-  companyId: Joi.string().uuid().required(),
-});
+// Company user management validation
+export const validateAddUserToCompany = [
+  body('userId')
+    .isUUID()
+    .withMessage('Valid user ID is required'),
+  body('role')
+    .optional()
+    .isIn(['ADMIN', 'DEVELOPER', 'QA', 'OTHERS'])
+    .withMessage('Invalid company role'),
+  handleValidationErrors
+];
+
+export const validateUpdateCompanyUserRole = [
+  body('role')
+    .isIn(['ADMIN', 'DEVELOPER', 'QA', 'OTHERS'])
+    .withMessage('Invalid company role'),
+  handleValidationErrors
+];
+
+// Bug assignment validation
+export const validateBugAssignment = [
+  body('userId')
+    .isUUID()
+    .withMessage('Valid user ID is required'),
+  handleValidationErrors
+];
+
+// Parameter validation
+export const validateUUIDParam = (paramName) => [
+  param(paramName)
+    .isUUID()
+    .withMessage(`Valid ${paramName} is required`),
+  handleValidationErrors
+];
+
+// Query validation
+export const validatePagination = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100'),
+  handleValidationErrors
+];
+
+export const validateSearch = [
+  query('q')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Search query must be between 1 and 100 characters'),
+  handleValidationErrors
+];
+
+// Combined validation helpers
+export const validateUserParams = validateUUIDParam('userId');
+export const validateCompanyParams = validateUUIDParam('companyId');
+export const validateProjectParams = validateUUIDParam('projectId');
+export const validateBugParams = validateUUIDParam('bugId');

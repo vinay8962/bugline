@@ -1,6 +1,6 @@
 # BugLine Backend API
 
-A robust Node.js + Express REST API for the BugLine bug tracking and management system, built with Supabase as the database.
+A robust Node.js + Express REST API for the BugLine bug tracking and management system, built with Prisma ORM and Supabase PostgreSQL database.
 
 ## 🏗️ Architecture
 
@@ -8,7 +8,7 @@ A robust Node.js + Express REST API for the BugLine bug tracking and management 
 server/
 ├── src/
 │   ├── config/
-│   │   └── database.js          # Supabase configuration
+│   │   └── prisma.js           # Prisma client configuration
 │   ├── controllers/
 │   │   ├── userController.js     # User management endpoints
 │   │   ├── companyController.js  # Company management endpoints
@@ -26,7 +26,10 @@ server/
 │   │   ├── userService.js       # User business logic
 │   │   ├── companyService.js    # Company business logic
 │   │   └── membershipService.js # Membership business logic
+│   ├── app.js                   # Express app configuration
 │   └── server.js                # Main server file
+├── prisma/
+│   └── schema.prisma           # Database schema definition
 ├── package.json
 ├── env.example
 └── README.md
@@ -38,7 +41,7 @@ server/
 
 - Node.js 18+
 - npm or yarn
-- Supabase project with the 3-table structure
+- Supabase project with PostgreSQL database
 
 ### Installation
 
@@ -51,22 +54,45 @@ server/
 
 2. **Set up environment variables:**
 
-   ```bash
-   cp env.example .env
-   ```
-
-   Edit `.env` with your Supabase credentials:
+   Create a `.env` file in the `packages/server` directory:
 
    ```env
+   # Database Configuration
+   DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres"
+
+   # Server Configuration
    PORT=5000
    NODE_ENV=development
-   SUPABASE_URL=your_supabase_project_url
-   SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-   JWT_SECRET=your_jwt_secret_key_here
+
+   # JWT Configuration
+   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+   JWT_EXPIRES_IN=7d
+
+   # Email Configuration (for email verification)
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=your-email@gmail.com
+   SMTP_PASS=your-app-password
+
+   # App Configuration
+   APP_NAME=BugLine
+   APP_URL=http://localhost:3000
    ```
 
-3. **Start the server:**
+3. **Database Setup:**
+
+   ```bash
+   # Generate Prisma client
+   npm run db:generate
+
+   # Push schema to database (development)
+   npm run db:push
+
+   # Or use migrations (production)
+   npm run db:migrate
+   ```
+
+4. **Start the server:**
 
    ```bash
    # Development
@@ -76,52 +102,109 @@ server/
    npm start
    ```
 
-## 📊 Database Structure
+## 📊 Database Schema
 
-The API works with a 3-table structure:
+The Prisma schema includes a complete MVC architecture:
 
-### Users Table
+### Models (Prisma Schema)
+- **User**: Enhanced user profiles with skills and notification preferences
+- **Company**: Multi-tenant organizations with subscription plans
+- **Membership**: User-company relationships with role-based access
+- **Project**: Projects within companies with GitHub integration
+- **Bug**: Comprehensive bug reports with metadata and GitHub linking
 
-- `id` (UUID, Primary Key)
-- `email` (Text, Required)
-- `full_name` (Text, Optional)
-- `phone` (Text, Optional)
-- `avatar_url` (Text, Optional)
-- `global_role` (Text, Default: 'user')
-- `bio` (Text, Optional)
-- `timezone` (Text, Default: 'UTC')
-- `created_at` (Timestamp)
-- `updated_at` (Timestamp)
+### Database Structure
 
-### Companies Table
+#### User Table
+- `id` (String, Primary Key, UUID)
+- `email` (String, Unique)
+- `passwordHash` (String)
+- `firstName` (String)
+- `lastName` (String)
+- `githubUsername` (String, Optional)
+- `timezone` (String, Default: "UTC")
+- `skills` (String[])
+- `notificationPreferences` (Json, Optional)
+- `createdAt` (DateTime)
 
-- `id` (UUID, Primary Key)
-- `name` (Text, Required)
-- `description` (Text, Optional)
-- `logo_url` (Text, Optional)
-- `website` (Text, Optional)
-- `settings` (JSONB, Default: {})
-- `industry` (Text, Optional)
-- `size` (Text, Optional)
-- `created_by` (UUID, Foreign Key)
-- `created_at` (Timestamp)
-- `updated_at` (Timestamp)
+#### Company Table
+- `id` (String, Primary Key, UUID)
+- `name` (String)
+- `slug` (String, Unique)
+- `subscriptionPlan` (String, Default: "free")
+- `githubOrgName` (String, Optional)
+- `settings` (Json, Optional)
+- `createdAt` (DateTime)
 
-### Memberships Table
+#### Membership Table
+- `id` (String, Primary Key, UUID)
+- `userId` (String, Foreign Key)
+- `companyId` (String, Foreign Key)
+- `role` (CompanyRole Enum)
+- `permissions` (Json, Optional)
+- `joinedAt` (DateTime)
 
-- `id` (UUID, Primary Key)
-- `user_id` (UUID, Foreign Key)
-- `company_id` (UUID, Foreign Key)
-- `role` (Text, Required)
-- `permissions` (JSONB, Default: {})
-- `title` (Text, Optional)
-- `department` (Text, Optional)
-- `status` (Text, Default: 'active')
-- `invited_by` (UUID, Foreign Key)
-- `invited_at` (Timestamp)
-- `joined_at` (Timestamp)
-- `created_at` (Timestamp)
-- `updated_at` (Timestamp)
+#### Project Table
+- `id` (String, Primary Key, UUID)
+- `companyId` (String, Foreign Key)
+- `name` (String)
+- `slug` (String)
+- `githubRepoUrl` (String, Optional)
+- `widgetConfig` (Json, Optional)
+- `createdAt` (DateTime)
+
+#### Bug Table
+- `id` (String, Primary Key, UUID)
+- `projectId` (String, Foreign Key)
+- `title` (String)
+- `description` (String)
+- `severity` (BugSeverity Enum, Default: medium)
+- `status` (BugStatus Enum, Default: open)
+- `assignedToId` (String, Foreign Key, Optional)
+- `reporterId` (String, Foreign Key, Optional)
+- `reporterEmail` (String, Optional)
+- `userAgent` (String, Optional)
+- `browserInfo` (Json, Optional)
+- `pageUrl` (String, Optional)
+- `screenshots` (String[])
+- `githubIssueUrl` (String, Optional)
+- `createdAt` (DateTime)
+
+### Enums
+- **CompanyRole**: admin, developer, qa, viewer
+- **BugSeverity**: critical, high, medium, low
+- **BugStatus**: open, in_progress, fixed, closed
+
+## 🔧 Available Database Commands
+
+- `npm run db:generate` - Generate Prisma client
+- `npm run db:push` - Push schema changes to database
+- `npm run db:migrate` - Create and apply migrations
+- `npm run db:migrate:deploy` - Deploy migrations to production
+- `npm run db:reset` - Reset database and apply migrations
+- `npm run db:seed` - Seed database with initial data
+- `npm run db:studio` - Open Prisma Studio for database management
+
+## 🏗️ MVC Architecture
+
+### Models (Prisma Schema)
+- `User` - User authentication and profile management
+- `Company` - Multi-tenant organization management
+- `Membership` - User-company relationships with roles
+- `Project` - Project management within companies
+- `Bug` - Comprehensive bug tracking with metadata
+
+### Views (API Responses)
+- RESTful API endpoints
+- JSON responses with proper status codes
+- Error handling and validation
+
+### Controllers (Route Handlers)
+- `authController.js` - Authentication logic
+- `userController.js` - User management
+- `companyController.js` - Company operations
+- `membershipController.js` - Membership management
+- `adminController.js` - Admin operations
 
 ## 🔐 Authentication & Authorization
 
@@ -129,19 +212,20 @@ The API works with a 3-table structure:
 
 - All protected routes require a valid JWT token
 - Token format: `Bearer <token>`
-- Tokens are verified against Supabase auth.users
+- Tokens are verified against Prisma User model
 
 ### Role-Based Access Control
 
-- **Global Roles**: `super_admin`, `user`
-- **Company Roles**: `admin`, `dev`, `bug_reporter`, `viewer`
-- **Membership Status**: `active`, `inactive`, `pending`, `suspended`
+- **Company Roles**: `admin`, `developer`, `qa`, `viewer`
+- **Bug Severities**: `critical`, `high`, `medium`, `low`
+- **Bug Statuses**: `open`, `in_progress`, `fixed`, `closed`
 
-### Permission System
+### Role Permissions
 
-- JSON-based permissions stored in `memberships.permissions`
-- Custom permissions can be defined per membership
-- Admin role has full access to company resources
+- **admin**: Company creator/manager (full company access)
+- **developer**: Can work on bugs, update status, assign bugs to themselves
+- **qa**: Designated bug poster (professional QA role) - can only post bugs
+- **viewer**: General users who can view bugs and comment
 
 ## 📡 API Endpoints
 
@@ -163,15 +247,12 @@ The API works with a 3-table structure:
 - `DELETE /:userId` - Delete user (admin)
 - `GET /:userId/companies` - Get user's companies
 - `GET /:userId/stats` - Get user statistics
-- `PUT /:userId/role` - Update user global role (super admin)
 
 ### Companies API (`/api/v1/companies`)
 
 - `GET /` - Get all companies
 - `POST /` - Create company
 - `GET /search` - Search companies (public)
-- `GET /industry/:industry` - Get companies by industry (public)
-- `GET /name/:name` - Get company by name (public)
 - `GET /:companyId` - Get company details
 - `PUT /:companyId` - Update company (admin)
 - `DELETE /:companyId` - Delete company (admin)
@@ -200,6 +281,24 @@ The API works with a 3-table structure:
 - `GET /user/:userId/company/:companyId` - Get user's company membership
 - `GET /me/company/:companyId` - Get current user's company membership
 
+### Projects API (`/api/v1/projects`)
+
+- `GET /` - Get all projects
+- `POST /` - Create project
+- `GET /:projectId` - Get project details
+- `PUT /:projectId` - Update project
+- `DELETE /:projectId` - Delete project
+- `GET /company/:companyId` - Get company's projects
+
+### Bugs API (`/api/v1/bugs`)
+
+- `GET /` - Get all bugs (with filters)
+- `POST /` - Create bug report
+- `GET /:bugId` - Get bug details
+- `PUT /:bugId` - Update bug
+- `DELETE /:bugId` - Delete bug
+- `GET /project/:projectId` - Get project's bugs
+
 ## 🔧 Features
 
 ### ✅ Implemented
@@ -219,6 +318,9 @@ The API works with a 3-table structure:
 - **Statistics** - User and company analytics
 - **Invitation System** - Company member invitations
 - **Permission Management** - Custom JSON permissions
+- **Prisma ORM** - Type-safe database operations
+- **Database Migrations** - Version-controlled schema changes
+- **Auto-generated Types** - JavaScript type safety
 
 ### 🚧 Planned Features
 
@@ -240,6 +342,7 @@ The API works with a 3-table structure:
 - **JWT Verification** - Token validation
 - **Role-Based Access** - Authorization control
 - **Error Sanitization** - Safe error messages
+- **Prisma Query Safety** - SQL injection prevention
 
 ## 🧪 Testing
 
@@ -260,15 +363,19 @@ npm run test:watch
 | --------------------------- | ------------------------- | ----------------------- |
 | `PORT`                      | Server port               | `5000`                  |
 | `NODE_ENV`                  | Environment               | `development`           |
-| `SUPABASE_URL`              | Supabase project URL      | Required                |
-| `SUPABASE_ANON_KEY`         | Supabase anonymous key    | Required                |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Required                |
+| `DATABASE_URL`              | Prisma database URL       | Required                |
 | `JWT_SECRET`                | JWT signing secret        | Required                |
 | `JWT_EXPIRES_IN`            | JWT expiration time       | `7d`                    |
 | `RATE_LIMIT_WINDOW_MS`      | Rate limit window         | `900000`                |
 | `RATE_LIMIT_MAX_REQUESTS`   | Max requests per window   | `100`                   |
 | `CORS_ORIGIN`               | Allowed CORS origin       | `http://localhost:5173` |
 | `LOG_LEVEL`                 | Logging level             | `info`                  |
+| `SMTP_HOST`                 | SMTP server host          | `smtp.gmail.com`        |
+| `SMTP_PORT`                 | SMTP server port          | `587`                   |
+| `SMTP_USER`                 | SMTP username             | Required                |
+| `SMTP_PASS`                 | SMTP password             | Required                |
+| `APP_NAME`                  | Application name          | `BugLine`               |
+| `APP_URL`                   | Application URL           | `http://localhost:3000` |
 
 ## 🚀 Deployment
 
@@ -290,6 +397,29 @@ npm start
 docker build -t bugline-backend .
 docker run -p 5000:5000 bugline-backend
 ```
+
+## 🚨 Important Notes
+
+1. **Environment Variables**: Always use environment variables for sensitive data
+2. **Database URL**: Get your Supabase connection string from the Supabase dashboard
+3. **Migrations**: Use migrations for production deployments
+4. **Seeding**: Create seed data for development and testing
+5. **Backup**: Regular database backups are recommended
+
+## 🐛 Troubleshooting
+
+### Common Issues:
+
+1. **Connection Failed**: Check your DATABASE_URL in .env
+2. **Migration Errors**: Run `npm run db:reset` to start fresh
+3. **Client Generation**: Run `npm run db:generate` after schema changes
+4. **Permission Errors**: Ensure your database user has proper permissions
+
+### Getting Help:
+
+- Check Prisma documentation: https://pris.ly/docs
+- Review Supabase documentation: https://supabase.com/docs
+- Check the project README for additional setup instructions
 
 ## 📚 API Documentation
 
