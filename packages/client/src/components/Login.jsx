@@ -23,7 +23,7 @@ const Login = ({ onClick }) => {
 
         if (response.ok) {
           const userInfo = await response.json();
-
+          console.log("User Info:", userInfo);
           // 🔁 Dispatch to Redux
           dispatch(
             setGoogleUser({
