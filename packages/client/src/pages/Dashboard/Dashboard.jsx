@@ -1,9 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { Bug, Bell, Plus, Search, MessageSquare, LogOut } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Bug,
+  Bell,
+  Plus,
+  Search,
+  MessageSquare,
+  LogOut,
+  Settings,
+  UserPlus,
+} from "lucide-react";
 import BugStats from "../../components/BugStats";
 import AddEmployee from "../Employee/AddEmployee";
 import { googleLogout } from "@react-oauth/google";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -11,7 +20,20 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef();
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+    };
+  }, []);
   const logout = () => {
     try {
       // Google logout
@@ -147,19 +169,49 @@ const Dashboard = () => {
               <button className="w-10 h-10 border border-gray-600/40 rounded-xl flex items-center justify-center hover:bg-gray-700 transition">
                 <Bell className="h-4 w-4 text-white" />
               </button>
-              <button
-                onClick={() => setShowModal(true)}
-                className="flex items-center px-4 py-3 w-40 gap-2 bg-second-primary text-white text-sm font-medium rounded-xl hover:bg-second-primary/50 transition"
-              >
-                <Plus className="h-4 w-4" />
-                Add Employee
-              </button>
-              <button
-                onClick={logout}
-                className="flex items-center justify-center border border-gray-800 px-4 py-3 w-32 gap-2 bg-primary text-white text-sm font-medium rounded-xl hover:bg-gray-800/50 cursor-pointer transition"
-              >
-                <LogOut className="h-4 w-4" /> Logout
-              </button>
+              <div className="relative inline-block text-left" ref={menuRef}>
+                <button
+                  onClick={() => setOpen(!open)}
+                  className="p-3 rounded-xl border border-gray-600/40 bg-background/50 backdrop-blur hover:bg-gray-700 "
+                >
+                  <Settings className="h-4 w-4 text-white" />
+                </button>
+                {open && (
+                  <div className="absolute right-0 mt-2 w-56 bg-primary border border-gray-700 rounded-md shadow-lg backdrop-blur-xl z-50 overflow-visible">
+                    <ul className=" text-sm text-white">
+                      <li>
+                        <p
+                          onClick={() => setShowModal(true)}
+                          className="flex items-center px-4 py-2 hover:bg-gray-800"
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" /> Add Employee
+                        </p>
+                      </li>
+                      <li>
+                        <Link className="flex items-center px-4 py-2 hover:bg-gray-800 text-white">
+                          <Plus className="h-4 w-4 mr-2" /> Add Company
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/profile"
+                          className="flex items-center px-4 py-2 hover:bg-gray-800"
+                        >
+                          <Settings className="h-4 w-4 mr-2" /> Profile
+                        </Link>
+                      </li>
+                      <li>
+                        <button
+                          onClick={logout}
+                          className="w-full flex items-center px-4 py-2 text-red-500 hover:bg-gray-800 focus:text-red-600"
+                        >
+                          <LogOut className="h-4 w-4 mr-2" /> Logout
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
