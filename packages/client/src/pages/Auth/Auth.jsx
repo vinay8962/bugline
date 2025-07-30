@@ -18,10 +18,10 @@ const Auth = () => {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="lucide lucide-bug-icon lucide-bug text-white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-bug-icon lucide-bug text-white"
               >
                 <path d="m8 2 1.88 1.88" />
                 <path d="M14.12 3.88 16 2" />
