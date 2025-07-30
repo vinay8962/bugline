@@ -1,4 +1,4 @@
-import { AdminService } from "../services/adminService.js";
+import * as AdminService from "../services/adminService.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
 export class AdminController {

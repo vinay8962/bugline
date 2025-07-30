@@ -1,183 +1,112 @@
-import { UserService } from "../services/userService.js";
-import { asyncHandler } from "../middleware/errorHandler.js";
+import * as UserService from '../services/userService.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
-export class UserController {
-  // Get all users with pagination and search
-  static getUsers = asyncHandler(async (req, res) => {
-    const {
-      page = 1,
-      limit = 10,
-      search = "",
-      sort_by = "created_at",
-      sort_order = "desc",
-    } = req.query;
-
-    const result = await UserService.getUsers(
-      parseInt(page),
-      parseInt(limit),
-      search,
-      sort_by,
-      sort_order
-    );
-
-    res.status(200).json({
-      success: true,
-      data: result.users,
-      pagination: result.pagination,
-    });
+// Get all users
+export const getUsers = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, global_role } = req.query;
+  
+  const filters = {};
+  if (global_role) filters.global_role = global_role;
+  
+  const result = await UserService.getAllUsers(
+    parseInt(page), 
+    parseInt(limit), 
+    filters
+  );
+  
+  res.json({
+    success: true,
+    data: result.users,
+    pagination: result.pagination
   });
+});
 
-  // Get user by ID
-  static getUserById = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-
-    const user = await UserService.getUserById(userId);
-
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
+// Get user by ID
+export const getUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  
+  const user = await UserService.getUserById(userId);
+  
+  res.json({
+    success: true,
+    data: user
   });
+});
 
-  // Get current user profile
-  static getCurrentUser = asyncHandler(async (req, res) => {
-    const user = await UserService.getUserById(req.user.id);
-
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
+// Update user
+export const updateUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const updateData = req.body;
+  
+  const user = await UserService.updateUser(userId, updateData);
+  
+  res.json({
+    success: true,
+    data: user,
+    message: 'User updated successfully'
   });
+});
 
-  // Update current user profile
-  static updateCurrentUser = asyncHandler(async (req, res) => {
-    const updatedUser = await UserService.updateUser(req.user.id, req.body);
-
-    res.status(200).json({
-      success: true,
-      data: updatedUser,
-      message: "Profile updated successfully",
-    });
+// Delete user
+export const deleteUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  
+  const result = await UserService.deleteUser(userId);
+  
+  res.json({
+    success: true,
+    message: result.message
   });
+});
 
-  // Update user by ID (admin only)
-  static updateUser = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-
-    const updatedUser = await UserService.updateUser(userId, req.body);
-
-    res.status(200).json({
-      success: true,
-      data: updatedUser,
-      message: "User updated successfully",
-    });
+// Search users
+export const searchUsers = asyncHandler(async (req, res) => {
+  const { q: searchTerm, limit = 10 } = req.query;
+  
+  const users = await UserService.searchUsers(searchTerm, parseInt(limit));
+  
+  res.json({
+    success: true,
+    data: users
   });
+});
 
-  // Update user global role (super admin only)
-  static updateUserRole = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    const { global_role } = req.body;
-
-    const updatedUser = await UserService.updateUserRole(userId, global_role);
-
-    res.status(200).json({
-      success: true,
-      data: updatedUser,
-      message: "User role updated successfully",
-    });
+// Get user companies
+export const getUserCompanies = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  
+  const companies = await UserService.getUserCompanies(userId);
+  
+  res.json({
+    success: true,
+    data: companies
   });
+});
 
-  // Delete user (admin only)
-  static deleteUser = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-
-    await UserService.deleteUser(userId);
-
-    res.status(200).json({
-      success: true,
-      message: "User deleted successfully",
-    });
+// Update user password
+export const updateUserPassword = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { newPassword } = req.body;
+  
+  const user = await UserService.updateUserPassword(userId, newPassword);
+  
+  res.json({
+    success: true,
+    data: user,
+    message: 'Password updated successfully'
   });
+});
 
-  // Get user's companies
-  static getUserCompanies = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-
-    const companies = await UserService.getUserCompanies(userId);
-
-    res.status(200).json({
-      success: true,
-      data: companies,
-    });
+// Update user role (SUPER_ADMIN only)
+export const updateUserRole = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { global_role } = req.body;
+  
+  const user = await UserService.updateUserRole(userId, global_role);
+  
+  res.json({
+    success: true,
+    data: user,
+    message: 'User role updated successfully'
   });
-
-  // Get current user's companies
-  static getCurrentUserCompanies = asyncHandler(async (req, res) => {
-    const companies = await UserService.getUserCompanies(req.user.id);
-
-    res.status(200).json({
-      success: true,
-      data: companies,
-    });
-  });
-
-  // Search users
-  static searchUsers = asyncHandler(async (req, res) => {
-    const { q, limit = 10 } = req.query;
-
-    if (!q) {
-      return res.status(400).json({
-        success: false,
-        message: "Search query is required",
-      });
-    }
-
-    const users = await UserService.searchUsers(q, parseInt(limit));
-
-    res.status(200).json({
-      success: true,
-      data: users,
-    });
-  });
-
-  // Get user statistics
-  static getUserStats = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-
-    const stats = await UserService.getUserStats(userId);
-
-    res.status(200).json({
-      success: true,
-      data: stats,
-    });
-  });
-
-  // Get current user statistics
-  static getCurrentUserStats = asyncHandler(async (req, res) => {
-    const stats = await UserService.getUserStats(req.user.id);
-
-    res.status(200).json({
-      success: true,
-      data: stats,
-    });
-  });
-
-  // Get user by email (admin only)
-  static getUserByEmail = asyncHandler(async (req, res) => {
-    const { email } = req.params;
-
-    const user = await UserService.getUserByEmail(email);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
-  });
-}
+});
