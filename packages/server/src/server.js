@@ -1,114 +1,84 @@
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import compression from "compression";
-import rateLimit from "express-rate-limit";
-import morgan from "morgan";
-import dotenv from "dotenv";
-import "express-async-errors";
+import { app, PORT } from "./app.js";
+import { checkDatabaseConnection, disconnectPrisma } from "./config/prisma.js";
 
-import routes from "./routes/index.js";
-import { errorHandler } from "./middleware/errorHandler.js";
-
-// Load environment variables
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Security middleware
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
-  })
-);
-
-// CORS configuration
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
-);
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: {
-    success: false,
-    message: "Too many requests from this IP, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use(limiter);
-
-// Compression middleware
-app.use(compression());
-
-// Body parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Logging middleware
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-} else {
-  app.use(morgan("combined"));
-}
-
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// API routes
-app.use("/", routes);
-
-// Global error handling middleware (must be last)
-app.use(errorHandler);
+let server;
 
 // Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully");
-  process.exit(0);
+const gracefulShutdown = async (signal) => {
+  console.log(`${signal} received, shutting down gracefully`);
+  
+  if (server) {
+    server.close(async () => {
+      console.log("HTTP server closed");
+      await disconnectPrisma();
+      process.exit(0);
+    });
+
+    // Force close after 10s
+    setTimeout(async () => {
+      console.error("Could not close connections in time, forcefully shutting down");
+      await disconnectPrisma();
+      process.exit(1);
+    }, 10000);
+  } else {
+    // No server instance (e.g., startup failure)
+    console.log("No server instance to close");
+    await disconnectPrisma();
+    process.exit(1);
+  }
+};
+
+// Start server with database health check
+const startServer = async () => {
+  try {
+    // Check database connection before starting server
+    await checkDatabaseConnection();
+    
+    server = app.listen(PORT, () => {
+      console.log(`🚀 BugLine API Server running on port ${PORT}`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(`📚 API Docs: http://localhost:${PORT}/docs`);
+    });
+
+    // Add error handling for the server
+    server.on('error', (error) => {
+      console.error("Server error:", error.message);
+      gracefulShutdown("SERVER_ERROR");
+    });
+
+    return server;
+  } catch (error) {
+    console.error("Failed to start server:", error.message);
+    
+    // Provide more specific error messages
+    if (error.message.includes('Database connection failed')) {
+      console.error("❌ Database connection failed. Please check your DATABASE_URL environment variable.");
+    } else if (error.message.includes('EADDRINUSE')) {
+      console.error("❌ Port is already in use. Please try a different port.");
+    } else {
+      console.error("❌ Unexpected error during server startup.");
+    }
+    
+    gracefulShutdown("STARTUP_ERROR");
+  }
+};
+
+// Handle process signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error.message);
+  gracefulShutdown('UNCAUGHT_EXCEPTION');
 });
 
-process.on("SIGINT", () => {
-  console.log("SIGINT received, shutting down gracefully");
-  process.exit(0);
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('UNHANDLED_REJECTION');
 });
 
-// Unhandled promise rejection handler
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Promise Rejection:", err);
-  process.exit(1);
-});
-
-// Uncaught exception handler
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err);
-  process.exit(1);
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 BugLine API Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`📚 API Docs: http://localhost:${PORT}/docs`);
-});
-
-export default app;
+// Start the server
+startServer();

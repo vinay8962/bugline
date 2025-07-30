@@ -9,13 +9,13 @@ import { validate, companySchemas } from "../middleware/validation.js";
 
 const router = express.Router();
 
-// Public routes (if any)
-router.get("/search", CompanyController.searchCompanies);
-router.get("/industry/:industry", CompanyController.getCompaniesByIndustry);
-router.get("/name/:name", CompanyController.getCompanyByName);
+
 
 // Protected routes - require authentication
 router.use(authenticateToken);
+
+// Public routes (if any)
+router.get("/search", CompanyController.searchCompanies);
 
 // Company management routes
 router.get("/", CompanyController.getCompanies);
@@ -43,9 +43,9 @@ router.delete(
   CompanyController.deleteCompany
 );
 router.get(
-  "/:companyId/members",
+  "/:companyId/users",
   requireCompanyAccess,
-  CompanyController.getCompanyMembers
+  CompanyController.getCompanyUsers
 );
 router.get(
   "/:companyId/stats",
