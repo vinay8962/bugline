@@ -35,10 +35,14 @@
     "preview": "npm run preview --workspace=@bugline/client",
     "install:all": "npm install && npm install --workspace=@bugline/client && npm install --workspace=@bugline/server",
     "clean:all": "rm -rf node_modules packages/*/node_modules packages/*/dist packages/*/coverage",
-    "reset": "npm run clean:all && npm run install:all"
+    "reset": "npm run clean:all && npm run install:all",
+    "guard": "node scripts/monorepo-guard.js",
+    "guard:fix": "rm -rf packages/*/node_modules packages/*/package-lock.json packages/*/yarn.lock packages/*/pnpm-lock.yaml && npm install",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "husky": "^9.0.11"
   },
   "engines": {
     "node": ">=18.0.0",

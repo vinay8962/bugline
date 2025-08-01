@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run monorepo architecture guard
+node scripts/monorepo-guard.js
+
+# Run linting on all packages
+npm run lint
