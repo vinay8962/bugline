@@ -25,6 +25,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@bugline/shared": "file:../shared",
     "@prisma/client": "^6.13.0",
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",

@@ -32,18 +32,16 @@
     "clean:client": "npm run clean --workspace=@bugline/client",
     "clean:server": "npm run clean --workspace=@bugline/server",
     "typecheck": "npm run typecheck --workspace=@bugline/client && npm run typecheck --workspace=@bugline/server",
-    "preview": "npm run preview --workspace=@bugline/client"
+    "preview": "npm run preview --workspace=@bugline/client",
+    "install:all": "npm install && npm install --workspace=@bugline/client && npm install --workspace=@bugline/server",
+    "clean:all": "rm -rf node_modules packages/*/node_modules packages/*/dist packages/*/coverage",
+    "reset": "npm run clean:all && npm run install:all"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
-  "dependencies": {
-    "@reduxjs/toolkit": "^2.8.2",
-    "react-redux": "^9.2.0",
-    "redux-persist": "^6.0.0"
-  },
-  "dependencies": {
-    "axios": "^1.11.0",
-    "react-toastify": "^11.0.5"
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
