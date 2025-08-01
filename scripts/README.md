@@ -24,8 +24,11 @@ The `monorepo-guard.js` script prevents developers from breaking the monorepo ar
 # Check monorepo architecture
 npm run guard
 
-# Fix violations automatically
+# Fix monorepo violations automatically
 npm run guard:fix
+
+# Fix ESLint issues automatically
+npm run eslint:fix
 
 # Run manually
 node scripts/monorepo-guard.js
@@ -85,16 +88,18 @@ node scripts/monorepo-guard.js
 If you encounter issues:
 
 1. **Reset everything**: `npm run reset`
-2. **Fix violations**: `npm run guard:fix`
-3. **Reinstall dependencies**: `npm install`
-4. **Check architecture**: `npm run guard`
+2. **Fix monorepo violations**: `npm run guard:fix`
+3. **Fix ESLint issues**: `npm run eslint:fix`
+4. **Reinstall dependencies**: `npm install`
+5. **Check architecture**: `npm run guard`
 
 ## 📚 Related Commands
 
 ```bash
 # Monorepo management
 npm run guard          # Check architecture
-npm run guard:fix      # Fix violations
+npm run guard:fix      # Fix monorepo violations
+npm run eslint:fix     # Fix ESLint issues
 npm run clean:all      # Clean all build artifacts
 npm run reset          # Reset everything
 

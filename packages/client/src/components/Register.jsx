@@ -45,7 +45,6 @@ const Register = ({ onClick }) => {
           }
         );
 
-        console.log("Google User Info:", res.data);
         // Send to backend registration API
         // const backendRes = await axios.post(
         //   "http://localhost:5000/api/register",
@@ -56,15 +55,13 @@ const Register = ({ onClick }) => {
         //   }
         // );
 
-        // console.log("Registration Success:", backendRes.data);
-        // Send to backend registration API (optional, or after OTP verification)
+        // // Send to backend registration API (optional, or after OTP verification)
         // await axios.post("http://localhost:5000/api/register", { name, email, image: picture });
 
         toast.success("Google registration initiated. OTP sent!");
-        setUserEmail(email); // for EmailVerify
+        setUserEmail(res.data.email); // for EmailVerify
         setShowVerifyModal(true);
       } catch (err) {
-        console.error("Google registration failed", err);
         toast.error("Google registration failed.");
       }
     },

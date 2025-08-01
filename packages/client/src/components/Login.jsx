@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Eye, EyeOff, Link } from "lucide-react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { Eye, EyeOff} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
 import { setGoogleUser } from "../features/auth/authSlice";
 import { useDispatch } from "react-redux";
@@ -23,7 +23,6 @@ const Login = ({ onClick }) => {
 
         if (response.ok) {
           const userInfo = await response.json();
-          console.log("User Info:", userInfo);
           // 🔁 Dispatch to Redux
           dispatch(
             setGoogleUser({
@@ -34,10 +33,10 @@ const Login = ({ onClick }) => {
 
           navigate("/dashboard");
         } else {
-          console.error("Failed to fetch user info:", response.statusText);
+          // Handle unsuccessful login
         }
       } catch (error) {
-        console.error("Error fetching user info:", error);
+        // Handle error
       }
     },
   });

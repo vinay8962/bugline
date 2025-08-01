@@ -1,4 +1,4 @@
-import React from "react";
+;
 import Auth from "./pages/Auth/Auth";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";

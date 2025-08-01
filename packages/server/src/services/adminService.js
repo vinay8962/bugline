@@ -88,7 +88,7 @@ export const getSystemStats = async () => {
 export const manageCompanyUsers = async (companyId, action, userId, role) => {
   try {
     switch (action) {
-      case 'add':
+      case 'add': {
         const newMembership = await prisma.companyUser.create({
           data: {
             user_id: userId,
@@ -113,8 +113,9 @@ export const manageCompanyUsers = async (companyId, action, userId, role) => {
           }
         });
         return newMembership;
+      }
         
-      case 'remove':
+      case 'remove': {
         await prisma.companyUser.delete({
           where: {
             user_id_company_id: {
@@ -124,8 +125,9 @@ export const manageCompanyUsers = async (companyId, action, userId, role) => {
           }
         });
         return { message: 'User removed from company successfully' };
+      }
         
-      case 'update_role':
+      case 'update_role': {
         const updatedMembership = await prisma.companyUser.update({
           where: {
             user_id_company_id: {
@@ -152,6 +154,7 @@ export const manageCompanyUsers = async (companyId, action, userId, role) => {
           }
         });
         return updatedMembership;
+      }
         
       default:
         throw createError('Invalid action', 400);

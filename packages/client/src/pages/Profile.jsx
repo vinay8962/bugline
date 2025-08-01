@@ -15,7 +15,6 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  console.log(isLoading, error);
   const mockUserData = {
     firstName: "John",
     lastName: "Doe",
@@ -62,7 +61,7 @@ const Profile = () => {
 
     try {
       // await updateUserProfile(formData);
-      console.log("Profile data:", formData); // Remove when API ready
+      // Remove when API ready
       setIsEditing(false);
     } catch (error) {
       setError(error.message);

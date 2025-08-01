@@ -1,4 +1,4 @@
-import React from "react";
+;
 import { Zap, CheckCircle } from "lucide-react";
 import heroImage from "../assets/971-removebg-preview.png"; // Update path as needed
 const Herosetion = () => {

@@ -29,15 +29,12 @@ const EmailVerify = ({ email }) => {
 
     try {
       setLoading(true);
-      console.log("Entered OTP:", otpString);
-
       // TODO: Replace this with actual API call
       // const res = await verifyOTP({ email, otp: otpString });
       // if (res.success) { ... }
 
       toast.success("OTP verified successfully!");
     } catch (error) {
-      console.error("OTP verification failed:", error);
       toast.error("Failed to verify OTP. Please try again.");
     } finally {
       setLoading(false);

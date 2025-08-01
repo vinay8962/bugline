@@ -1,4 +1,4 @@
-import React from "react";
+;
 import Navbar from "../components/Navbar";
 import Herosetion from "../components/Herosetion";
 import Features from "../components/Features";

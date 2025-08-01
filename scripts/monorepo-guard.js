@@ -5,6 +5,8 @@
  * 
  * This script prevents developers from installing node_modules in individual packages
  * and enforces the monorepo architecture. It should be run as a pre-commit hook.
+ * 
+ * Windows-compatible version
  */
 
 import fs from 'fs';
@@ -128,8 +130,16 @@ function checkMonorepoArchitecture() {
 function showRemediationSteps() {
   log('\n🔧 Remediation Steps:', 'yellow');
   log('1. Remove node_modules from individual packages:', 'yellow');
+  log('   # Windows:', 'blue');
+  log('   rmdir /s /q packages\\client\\node_modules', 'blue');
+  log('   rmdir /s /q packages\\server\\node_modules', 'blue');
+  log('   rmdir /s /q packages\\shared\\node_modules', 'blue');
+  log('   # Unix/Mac:', 'blue');
   log('   rm -rf packages/*/node_modules', 'blue');
   log('2. Remove lock files from individual packages:', 'yellow');
+  log('   # Windows:', 'blue');
+  log('   del packages\\*\\package-lock.json packages\\*\\yarn.lock packages\\*\\pnpm-lock.yaml', 'blue');
+  log('   # Unix/Mac:', 'blue');
   log('   rm -f packages/*/package-lock.json packages/*/yarn.lock packages/*/pnpm-lock.yaml', 'blue');
   log('3. Install dependencies from root:', 'yellow');
   log('   npm install', 'blue');

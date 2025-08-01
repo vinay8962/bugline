@@ -1,4 +1,4 @@
-import React from "react";
+;
 import { Bug, AlertTriangle, Clock, CheckCircle } from "lucide-react";
 
 const BugStats = ({ stats }) => {

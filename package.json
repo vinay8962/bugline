@@ -37,7 +37,8 @@
     "clean:all": "rm -rf node_modules packages/*/node_modules packages/*/dist packages/*/coverage",
     "reset": "npm run clean:all && npm run install:all",
     "guard": "node scripts/monorepo-guard.js",
-    "guard:fix": "rm -rf packages/*/node_modules packages/*/package-lock.json packages/*/yarn.lock packages/*/pnpm-lock.yaml && npm install",
+    "guard:fix": "node scripts/fix-monorepo.js",
+    "eslint:fix": "node scripts/fix-eslint.js",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -4,11 +4,9 @@ import {
   Bell,
   Plus,
   Search,
-  MessageSquare,
   LogOut,
   Settings,
-  UserPlus,
-} from "lucide-react";
+  UserPlus} from "lucide-react";
 import BugStats from "../../components/BugStats";
 import AddEmployee from "../Employee/AddEmployee";
 import { googleLogout } from "@react-oauth/google";
@@ -40,10 +38,9 @@ const Dashboard = () => {
       // Navigate to login or home page
       navigate("/");
 
-      console.log("Logout successful");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+      } catch (error) {
+        // Handle logout error
+      }
   };
 
   useEffect(() => {
