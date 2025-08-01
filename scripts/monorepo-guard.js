@@ -6,15 +6,22 @@
  * This script prevents developers from installing node_modules in individual packages
  * and enforces the monorepo architecture. It should be run as a pre-commit hook.
  * 
- * Windows-compatible version
+ * Cross-platform compatible: Windows, macOS, Linux
  */
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Cross-platform OS detection
+const platform = os.platform();
+const isWindows = platform === 'win32';
+const isMac = platform === 'darwin';
+const isLinux = platform === 'linux';
 
 // Colors for console output
 const colors = {
@@ -182,21 +189,32 @@ function showRemediationSteps() {
   log('   # 3. Update eslint configs to be compatible', 'blue');
   
   log('\n3. Clean up after version standardization:', 'yellow');
-  log('   # Remove ALL node_modules from packages (Unix/Mac):', 'blue');
-  log('   rm -rf packages/*/node_modules', 'blue');
-  log('   # Windows users:', 'blue');
-  log('   rmdir /s /q packages\\client\\node_modules', 'blue');
-  log('   rmdir /s /q packages\\server\\node_modules', 'blue');
-  log('   rmdir /s /q packages\\shared\\node_modules', 'blue');
+  if (isWindows) {
+    log('   # Windows Commands:', 'blue');
+    log('   rmdir /s /q packages\\client\\node_modules', 'blue');
+    log('   rmdir /s /q packages\\server\\node_modules', 'blue');
+    log('   rmdir /s /q packages\\shared\\node_modules', 'blue');
+  } else {
+    log('   # Unix/Mac/Linux Commands:', 'blue');
+    log('   rm -rf packages/*/node_modules', 'blue');
+  }
   
   log('\n4. Remove individual lock files:', 'yellow');
-  log('   # Unix/Mac:', 'blue');
-  log('   rm -f packages/*/package-lock.json packages/*/yarn.lock packages/*/pnpm-lock.yaml', 'blue');
-  log('   # Windows:', 'blue');
-  log('   del packages\\*\\package-lock.json packages\\*\\yarn.lock packages\\*\\pnpm-lock.yaml', 'blue');
+  if (isWindows) {
+    log('   # Windows:', 'blue');
+    log('   del packages\\*\\package-lock.json packages\\*\\yarn.lock packages\\*\\pnpm-lock.yaml', 'blue');
+  } else {
+    log('   # Unix/Mac/Linux:', 'blue');
+    log('   rm -f packages/*/package-lock.json packages/*/yarn.lock packages/*/pnpm-lock.yaml', 'blue');
+  }
   
   log('\n5. Clean root and reinstall properly:', 'yellow');
-  log('   rm -rf node_modules package-lock.json', 'blue');
+  if (isWindows) {
+    log('   rmdir /s /q node_modules', 'blue');
+    log('   del package-lock.json', 'blue');  
+  } else {
+    log('   rm -rf node_modules package-lock.json', 'blue');
+  }
   log('   npm install', 'blue');
   
   log('\n6. Verify fix by running guard again:', 'yellow');
@@ -227,6 +245,10 @@ function showRemediationSteps() {
 function main() {
   log('🚀 Monorepo Architecture Guard', 'bold');
   log('=====================================\n', 'blue');
+  
+  // Show platform for debugging
+  const platformName = isWindows ? 'Windows' : (isMac ? 'macOS' : (isLinux ? 'Linux' : platform));
+  log(`🌐 Platform: ${platformName}`, 'blue');
 
   const { hasViolations, violations } = checkMonorepoArchitecture();
 

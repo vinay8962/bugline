@@ -38,6 +38,7 @@
     "reset": "npm run clean:all && npm run install:all",
     "guard": "node scripts/monorepo-guard.js",
     "guard:fix": "node scripts/fix-monorepo.js",
+    "setup:check": "node scripts/setup-cross-platform.js",
     "eslint:fix": "node scripts/fix-eslint.js",
     "prepare": "husky"
   },
