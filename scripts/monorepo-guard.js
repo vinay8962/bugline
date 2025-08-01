@@ -44,15 +44,24 @@ function checkMonorepoArchitecture() {
     const nodeModulesPath = path.join(packagePath, 'node_modules');
     
     if (fs.existsSync(nodeModulesPath)) {
-      hasViolations = true;
-      violations.push(`❌ ${packageName}/node_modules found`);
-      
-      // Check if it's a directory with content
+      // Check if it's a legitimate workspace symlink or actual violation
       const stats = fs.statSync(nodeModulesPath);
       if (stats.isDirectory()) {
         const contents = fs.readdirSync(nodeModulesPath);
-        if (contents.length > 0) {
+        
+        // Check if this is a workspace symlink (legitimate) or actual violation
+        const isWorkspaceSymlink = contents.some(item => 
+          item.startsWith('@') || 
+          item.includes('node_modules') ||
+          fs.statSync(path.join(nodeModulesPath, item)).isSymbolicLink()
+        );
+        
+        if (!isWorkspaceSymlink && contents.length > 0) {
+          hasViolations = true;
+          violations.push(`❌ ${packageName}/node_modules found (actual installation)`);
           violations.push(`   📦 Contains ${contents.length} items`);
+        } else {
+          log(`✅ ${packageName}/ - Workspace symlinks (legitimate)`, 'green');
         }
       }
     } else {

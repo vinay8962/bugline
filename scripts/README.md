@@ -6,6 +6,11 @@ This directory contains scripts to maintain and enforce the monorepo architectur
 
 The `monorepo-guard.js` script prevents developers from breaking the monorepo architecture by:
 
+### Cross-Platform Support:
+- ✅ **Windows**: Full support with Windows-specific commands
+- ✅ **macOS**: Full support with Unix commands  
+- ✅ **Linux**: Full support with Unix commands
+
 ### What it checks:
 - ❌ `node_modules` directories in individual packages
 - ❌ Lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) in individual packages
@@ -24,7 +29,7 @@ The `monorepo-guard.js` script prevents developers from breaking the monorepo ar
 # Check monorepo architecture
 npm run guard
 
-# Fix monorepo violations automatically
+# Fix monorepo violations automatically (cross-platform)
 npm run guard:fix
 
 # Fix ESLint issues automatically
@@ -88,10 +93,28 @@ node scripts/monorepo-guard.js
 If you encounter issues:
 
 1. **Reset everything**: `npm run reset`
-2. **Fix monorepo violations**: `npm run guard:fix`
+2. **Fix monorepo violations**: `npm run guard:fix` (cross-platform)
 3. **Fix ESLint issues**: `npm run eslint:fix`
 4. **Reinstall dependencies**: `npm install`
 5. **Check architecture**: `npm run guard`
+
+### Cross-Platform Commands:
+
+**Windows:**
+```cmd
+rmdir /s /q packages\client\node_modules
+rmdir /s /q packages\server\node_modules
+rmdir /s /q packages\shared\node_modules
+del packages\*\package-lock.json packages\*\yarn.lock packages\*\pnpm-lock.yaml
+npm install
+```
+
+**macOS/Linux:**
+```bash
+rm -rf packages/*/node_modules
+rm -f packages/*/package-lock.json packages/*/yarn.lock packages/*/pnpm-lock.yaml
+npm install
+```
 
 ## 📚 Related Commands
 

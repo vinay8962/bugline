@@ -5,12 +5,15 @@
  * 
  * This script automatically fixes monorepo architecture violations
  * by removing node_modules and lock files from individual packages.
+ * 
+ * Cross-platform compatible (Windows, macOS, Linux)
  */
 
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,40 +32,95 @@ function log(message, color = 'reset') {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
+function getOSInfo() {
+  const platform = os.platform();
+  const isWindows = platform === 'win32';
+  const isMac = platform === 'darwin';
+  const isLinux = platform === 'linux';
+  
+  return { platform, isWindows, isMac, isLinux };
+}
+
 function removeDirectory(dirPath) {
-  if (fs.existsSync(dirPath)) {
+  if (!fs.existsSync(dirPath)) {
+    return false;
+  }
+
+  try {
+    // Use cross-platform fs.rmSync with proper options
+    fs.rmSync(dirPath, { 
+      recursive: true, 
+      force: true,
+      maxRetries: 3,
+      retryDelay: 100
+    });
+    
+    const relativePath = path.relative(process.cwd(), dirPath);
+    log(`✅ Removed: ${relativePath}`, 'green');
+    return true;
+  } catch (error) {
+    const { isWindows } = getOSInfo();
+    
+    // Try alternative methods for stubborn directories
     try {
-      fs.rmSync(dirPath, { recursive: true, force: true });
-      log(`✅ Removed: ${path.relative(process.cwd(), dirPath)}`, 'green');
+      if (isWindows) {
+        // Use Windows-specific command for stubborn directories
+        execSync(`rmdir /s /q "${dirPath}"`, { stdio: 'ignore' });
+      } else {
+        // Use Unix-specific command for stubborn directories
+        execSync(`rm -rf "${dirPath}"`, { stdio: 'ignore' });
+      }
+      
+      const relativePath = path.relative(process.cwd(), dirPath);
+      log(`✅ Removed (force): ${relativePath}`, 'green');
       return true;
-    } catch (error) {
+    } catch (forceError) {
       log(`❌ Failed to remove ${dirPath}: ${error.message}`, 'red');
+      log(`💡 Try manually: ${isWindows ? `rmdir /s /q "${dirPath}"` : `rm -rf "${dirPath}"`}`, 'yellow');
       return false;
     }
   }
-  return false;
 }
 
 function removeFile(filePath) {
-  if (fs.existsSync(filePath)) {
+  if (!fs.existsSync(filePath)) {
+    return false;
+  }
+
+  try {
+    fs.unlinkSync(filePath);
+    const relativePath = path.relative(process.cwd(), filePath);
+    log(`✅ Removed: ${relativePath}`, 'green');
+    return true;
+  } catch (error) {
+    const { isWindows } = getOSInfo();
+    
+    // Try alternative methods for stubborn files
     try {
-      fs.unlinkSync(filePath);
-      log(`✅ Removed: ${path.relative(process.cwd(), filePath)}`, 'green');
+      if (isWindows) {
+        execSync(`del /f /q "${filePath}"`, { stdio: 'ignore' });
+      } else {
+        execSync(`rm -f "${filePath}"`, { stdio: 'ignore' });
+      }
+      
+      const relativePath = path.relative(process.cwd(), filePath);
+      log(`✅ Removed (force): ${relativePath}`, 'green');
       return true;
-    } catch (error) {
+    } catch (forceError) {
       log(`❌ Failed to remove ${filePath}: ${error.message}`, 'red');
+      log(`💡 Try manually: ${isWindows ? `del /f /q "${filePath}"` : `rm -f "${filePath}"`}`, 'yellow');
       return false;
     }
   }
-  return false;
 }
 
 function fixMonorepoViolations() {
   const packagesDir = path.join(process.cwd(), 'packages');
   const packages = ['client', 'server', 'shared'];
   let fixedCount = 0;
+  const { platform } = getOSInfo();
 
-  log('🔧 Fixing monorepo violations...', 'blue');
+  log(`🔧 Fixing monorepo violations on ${platform}...`, 'blue');
 
   // Remove node_modules from each package
   packages.forEach(packageName => {
@@ -90,18 +148,46 @@ function reinstallDependencies() {
   log('\n📦 Reinstalling dependencies from root...', 'blue');
   
   try {
-    execSync('npm install', { stdio: 'inherit' });
+    // Use cross-platform npm install
+    execSync('npm install', { 
+      stdio: 'inherit',
+      cwd: process.cwd()
+    });
     log('✅ Dependencies reinstalled successfully', 'green');
     return true;
   } catch (error) {
     log(`❌ Failed to reinstall dependencies: ${error.message}`, 'red');
+    log('💡 Try running "npm install" manually', 'yellow');
     return false;
+  }
+}
+
+function showManualCommands() {
+  const { isWindows } = getOSInfo();
+  
+  log('\n🔧 Manual Commands (if automatic fix fails):', 'yellow');
+  
+  if (isWindows) {
+    log('Windows Commands:', 'blue');
+    log('  rmdir /s /q packages\\client\\node_modules', 'blue');
+    log('  rmdir /s /q packages\\server\\node_modules', 'blue');
+    log('  rmdir /s /q packages\\shared\\node_modules', 'blue');
+    log('  del packages\\*\\package-lock.json packages\\*\\yarn.lock packages\\*\\pnpm-lock.yaml', 'blue');
+    log('  npm install', 'blue');
+  } else {
+    log('Unix/Mac Commands:', 'blue');
+    log('  rm -rf packages/*/node_modules', 'blue');
+    log('  rm -f packages/*/package-lock.json packages/*/yarn.lock packages/*/pnpm-lock.yaml', 'blue');
+    log('  npm install', 'blue');
   }
 }
 
 function main() {
   log('🚀 Monorepo Fix Script', 'bold');
   log('======================\n', 'blue');
+
+  const { platform, isWindows, isMac, isLinux } = getOSInfo();
+  log(`🌐 Operating System: ${platform}`, 'blue');
 
   const fixedCount = fixMonorepoViolations();
   
@@ -113,6 +199,7 @@ function main() {
       log('💡 Run "npm run guard" to verify the fixes.', 'blue');
     } else {
       log('\n❌ Failed to reinstall dependencies', 'red');
+      showManualCommands();
       process.exit(1);
     }
   } else {
