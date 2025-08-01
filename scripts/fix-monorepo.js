@@ -114,19 +114,163 @@ function removeFile(filePath) {
   }
 }
 
+function analyzeDependencyConflicts() {
+  const packagesDir = path.join(process.cwd(), 'packages');
+  const packages = fs.existsSync(packagesDir) ? 
+    fs.readdirSync(packagesDir).filter(item => {
+      const itemPath = path.join(packagesDir, item);
+      return fs.statSync(itemPath).isDirectory();
+    }) : [];
+
+  const allDependencies = new Map();
+  const conflicts = new Map();
+
+  // Collect all dependencies from all packages
+  packages.forEach(packageName => {
+    const packageJsonPath = path.join(packagesDir, packageName, 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      try {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        
+        // Process both dependencies and devDependencies
+        ['dependencies', 'devDependencies'].forEach(depType => {
+          if (packageJson[depType]) {
+            Object.entries(packageJson[depType]).forEach(([depName, version]) => {
+              if (!allDependencies.has(depName)) {
+                allDependencies.set(depName, new Map());
+              }
+              allDependencies.get(depName).set(packageName, { version, type: depType });
+            });
+          }
+        });
+      } catch (error) {
+        log(`❌ Failed to read ${packageName}/package.json: ${error.message}`, 'red');
+      }
+    }
+  });
+
+  // Find conflicts (same dependency with different versions)
+  allDependencies.forEach((packageVersions, depName) => {
+    const versions = new Set();
+    packageVersions.forEach(({ version }) => versions.add(version));
+    
+    if (versions.size > 1) {
+      conflicts.set(depName, packageVersions);
+    }
+  });
+
+  return { conflicts, packages };
+}
+
+function resolveVersionConflicts(conflicts) {
+  log('\n🔍 Analyzing dependency conflicts...', 'blue');
+  
+  if (conflicts.size === 0) {
+    log('✅ No version conflicts found!', 'green');
+    return 0;
+  }
+
+  log(`📊 Found ${conflicts.size} dependency conflicts:`, 'yellow');
+  
+  let fixedCount = 0;
+  const resolutions = new Map();
+
+  conflicts.forEach((packageVersions, depName) => {
+    log(`\n🔧 Resolving conflict for "${depName}":`, 'blue');
+    
+    // Collect all versions and choose the highest semantic version
+    const versions = Array.from(packageVersions.values()).map(v => v.version);
+    const latestVersion = chooseLatestVersion(versions);
+    
+    packageVersions.forEach(({ version, type }, packageName) => {
+      log(`  📦 ${packageName}: ${version} (${type})`, version === latestVersion ? 'green' : 'yellow');
+    });
+    
+    log(`  ✅ Resolution: Use ${latestVersion}`, 'green');
+    resolutions.set(depName, { version: latestVersion, packages: packageVersions });
+    fixedCount++;
+  });
+
+  // Apply the resolutions
+  applyVersionResolutions(resolutions);
+  
+  return fixedCount;
+}
+
+function chooseLatestVersion(versions) {
+  // Simple version comparison - prioritize the highest version
+  // This handles basic semver without external dependencies
+  return versions.sort((a, b) => {
+    const aClean = a.replace(/[^\d.]/g, '');
+    const bClean = b.replace(/[^\d.]/g, '');
+    const aParts = aClean.split('.').map(Number);
+    const bParts = bClean.split('.').map(Number);
+    
+    for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+      const aPart = aParts[i] || 0;
+      const bPart = bParts[i] || 0;
+      if (aPart !== bPart) {
+        return bPart - aPart; // Sort descending (latest first)
+      }
+    }
+    return 0;
+  })[0];
+}
+
+function applyVersionResolutions(resolutions) {
+  log('\n📝 Updating package.json files...', 'blue');
+  
+  const packagesDir = path.join(process.cwd(), 'packages');
+  
+  resolutions.forEach(({ version, packages }, depName) => {
+    packages.forEach(({ type }, packageName) => {
+      const packageJsonPath = path.join(packagesDir, packageName, 'package.json');
+      
+      try {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        
+        if (packageJson[type] && packageJson[type][depName]) {
+          const oldVersion = packageJson[type][depName];
+          packageJson[type][depName] = version;
+          
+          fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+          log(`  ✅ Updated ${packageName}/${depName}: ${oldVersion} → ${version}`, 'green');
+        }
+      } catch (error) {
+        log(`  ❌ Failed to update ${packageName}: ${error.message}`, 'red');
+      }
+    });
+  });
+}
+
 function fixMonorepoViolations() {
   const packagesDir = path.join(process.cwd(), 'packages');
-  const packages = ['client', 'server', 'shared'];
   let fixedCount = 0;
   const { platform } = getOSInfo();
 
   log(`🔧 Fixing monorepo violations on ${platform}...`, 'blue');
 
-  // Remove node_modules from each package
+  // Step 1: Resolve dependency conflicts first
+  const { conflicts, packages } = analyzeDependencyConflicts();
+  const conflictsFix = resolveVersionConflicts(conflicts);
+  fixedCount += conflictsFix;
+
+  if (packages.length === 0) {
+    log('❌ No packages found in packages/ directory', 'red');
+    return fixedCount;
+  }
+
+  // Step 2: Remove ALL node_modules from packages
   packages.forEach(packageName => {
     const nodeModulesPath = path.join(packagesDir, packageName, 'node_modules');
-    if (removeDirectory(nodeModulesPath)) {
-      fixedCount++;
+    
+    if (fs.existsSync(nodeModulesPath)) {
+      log(`🗑️  Removing ${packageName}/node_modules`, 'yellow');
+      if (removeDirectory(nodeModulesPath)) {
+        fixedCount++;
+      }
+    } else {
+      log(`✅ ${packageName}/ - No node_modules to remove`, 'green');
     }
   });
 
@@ -182,34 +326,75 @@ function showManualCommands() {
   }
 }
 
+function handleProblematicDependencies() {
+  log('\n🔧 Handling problematic dependencies...', 'blue');
+  
+  const serverPackageJsonPath = path.join(process.cwd(), 'packages', 'server', 'package.json');
+  
+  if (fs.existsSync(serverPackageJsonPath)) {
+    try {
+      const serverPackageJson = JSON.parse(fs.readFileSync(serverPackageJsonPath, 'utf8'));
+      
+      // Remove eslint-config-node which brings in old ESLint versions and is problematic
+      if (serverPackageJson.devDependencies && serverPackageJson.devDependencies['eslint-config-node']) {
+        log('  🗑️  Removing problematic eslint-config-node from server', 'yellow');
+        delete serverPackageJson.devDependencies['eslint-config-node'];
+        
+        // Add a modern ESLint config instead
+        if (!serverPackageJson.devDependencies['@eslint/js']) {
+          serverPackageJson.devDependencies['@eslint/js'] = '^9.30.1';
+          log('  ✅ Added @eslint/js as modern replacement', 'green');
+        }
+        
+        fs.writeFileSync(serverPackageJsonPath, JSON.stringify(serverPackageJson, null, 2) + '\n');
+        log('  ✅ Updated server/package.json', 'green');
+        
+        return 1;
+      }
+    } catch (error) {
+      log(`  ❌ Failed to update server package.json: ${error.message}`, 'red');
+    }
+  }
+  
+  return 0;
+}
+
 function main() {
   log('🚀 Monorepo Fix Script', 'bold');
   log('======================\n', 'blue');
 
-  const { platform, isWindows, isMac, isLinux } = getOSInfo();
+  const { platform } = getOSInfo();
   log(`🌐 Operating System: ${platform}`, 'blue');
 
-  const fixedCount = fixMonorepoViolations();
+  let totalFixed = 0;
   
-  if (fixedCount > 0) {
-    log(`\n📊 Fixed ${fixedCount} violations`, 'yellow');
+  // Step 1: Handle problematic dependencies that cause conflicts
+  totalFixed += handleProblematicDependencies();
+  
+  // Step 2: Fix standard monorepo violations and conflicts
+  totalFixed += fixMonorepoViolations();
+  
+  if (totalFixed > 0) {
+    log(`\n📊 Fixed ${totalFixed} issues total`, 'yellow');
     
     if (reinstallDependencies()) {
-      log('\n✅ Monorepo violations have been fixed!', 'green');
-      log('💡 Run "npm run guard" to verify the fixes.', 'blue');
+      log('\n✅ Monorepo violations and conflicts resolved!', 'green');
+      log('💡 All dependencies should now be properly hoisted to save space.', 'green');
+      log('🚀 Run "npm run guard" to verify the fixes.', 'blue');
     } else {
       log('\n❌ Failed to reinstall dependencies', 'red');
       showManualCommands();
       process.exit(1);
     }
   } else {
-    log('\n✅ No monorepo violations found to fix.', 'green');
+    log('\n✅ No monorepo violations or conflicts found!', 'green');
   }
 
   log('\n📚 Next Steps:', 'yellow');
   log('1. Run: npm run guard', 'blue');
-  log('2. Run: npm run lint', 'blue');
-  log('3. Commit your changes', 'blue');
+  log('2. Run: npm run lint (may need config updates)', 'blue');
+  log('3. Test your applications', 'blue');
+  log('4. Commit your changes', 'blue');
 }
 
 // Run the fix

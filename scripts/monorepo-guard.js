@@ -31,12 +31,24 @@ function log(message, color = 'reset') {
 }
 
 function checkMonorepoArchitecture() {
-  const packagesDir = path.join(process.cwd(), 'packages');
-  const packages = ['client', 'server', 'shared'];
+  const packagesDir = path.join(process.cwd(), 'packages');  
   let hasViolations = false;
   let violations = [];
 
   log('🔍 Checking monorepo architecture...', 'blue');
+
+  // Dynamically discover packages
+  const packages = fs.existsSync(packagesDir) ? 
+    fs.readdirSync(packagesDir).filter(item => {
+      const itemPath = path.join(packagesDir, item);
+      return fs.statSync(itemPath).isDirectory();
+    }) : [];
+
+  if (packages.length === 0) {
+    hasViolations = true;
+    violations.push('❌ No packages found in packages/ directory');
+    return { hasViolations, violations };
+  }
 
   // Check each package for node_modules
   packages.forEach(packageName => {
@@ -44,28 +56,49 @@ function checkMonorepoArchitecture() {
     const nodeModulesPath = path.join(packagePath, 'node_modules');
     
     if (fs.existsSync(nodeModulesPath)) {
-      // Check if it's a legitimate workspace symlink or actual violation
       const stats = fs.statSync(nodeModulesPath);
       if (stats.isDirectory()) {
         const contents = fs.readdirSync(nodeModulesPath);
         
-        // Check if this is a workspace symlink (legitimate) or actual violation
-        const isWorkspaceSymlink = contents.some(item => 
-          item.startsWith('@') || 
-          item.includes('node_modules') ||
-          fs.statSync(path.join(nodeModulesPath, item)).isSymbolicLink()
-        );
+        // Check if this package has dependencies in its package.json
+        const packageJsonPath = path.join(packagesDir, packageName, 'package.json');
+        let hasDependencies = false;
         
-        if (!isWorkspaceSymlink && contents.length > 0) {
-          hasViolations = true;
-          violations.push(`❌ ${packageName}/node_modules found (actual installation)`);
-          violations.push(`   📦 Contains ${contents.length} items`);
-        } else {
-          log(`✅ ${packageName}/ - Workspace symlinks (legitimate)`, 'green');
+        if (fs.existsSync(packageJsonPath)) {
+          try {
+            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+            hasDependencies = (packageJson.dependencies && Object.keys(packageJson.dependencies).length > 0) ||
+                            (packageJson.devDependencies && Object.keys(packageJson.devDependencies).length > 0);
+          } catch (error) {
+            hasDependencies = true;
+          }
+        }
+        
+        if (contents.length > 0) {
+          // Check if this is due to version conflicts (which indicates dependency management issues)
+          const hasVersionConflicts = contents.some(item => {
+            try {
+              const itemPath = path.join(nodeModulesPath, item);
+              const itemStats = fs.lstatSync(itemPath);
+              return !itemStats.isSymbolicLink() && itemStats.isDirectory();
+            } catch (error) {
+              return false;
+            }
+          });
+          
+          if (hasVersionConflicts) {
+            hasViolations = true;
+            log(`❌ ${packageName}/ - Contains node_modules due to dependency conflicts (VIOLATION)`, 'red');
+            violations.push(`❌ ${packageName}/node_modules found - likely due to dependency version conflicts`);
+            violations.push(`   📦 Contains ${contents.length} items - indicates version conflicts that prevent hoisting`);
+            violations.push(`   🔧 Fix: Standardize dependency versions across packages to enable proper hoisting`);
+          } else {
+            log(`✅ ${packageName}/ - Contains workspace symlinks only (legitimate)`, 'green');
+          }
         }
       }
     } else {
-      log(`✅ ${packageName}/ - No node_modules found`, 'green');
+      log(`✅ ${packageName}/ - No node_modules found (correct)`, 'green');
     }
   });
 
@@ -137,29 +170,58 @@ function checkMonorepoArchitecture() {
 }
 
 function showRemediationSteps() {
-  log('\n🔧 Remediation Steps:', 'yellow');
-  log('1. Remove node_modules from individual packages:', 'yellow');
-  log('   # Windows:', 'blue');
+  log('\n🔧 IMMEDIATE REMEDIATION STEPS:', 'red');
+  log('==========================================', 'red');
+  
+  log('\n1. ⚠️  STOP - Do not commit until violations are fixed!', 'red');
+  
+  log('\n2. Fix dependency version conflicts (root cause):', 'yellow');
+  log('   # Standardize ESLint versions across all packages:', 'blue');
+  log('   # 1. Choose one ESLint version (e.g., latest 9.x)', 'blue');
+  log('   # 2. Update all package.json files to use the same version', 'blue');
+  log('   # 3. Update eslint configs to be compatible', 'blue');
+  
+  log('\n3. Clean up after version standardization:', 'yellow');
+  log('   # Remove ALL node_modules from packages (Unix/Mac):', 'blue');
+  log('   rm -rf packages/*/node_modules', 'blue');
+  log('   # Windows users:', 'blue');
   log('   rmdir /s /q packages\\client\\node_modules', 'blue');
   log('   rmdir /s /q packages\\server\\node_modules', 'blue');
   log('   rmdir /s /q packages\\shared\\node_modules', 'blue');
-  log('   # Unix/Mac:', 'blue');
-  log('   rm -rf packages/*/node_modules', 'blue');
-  log('2. Remove lock files from individual packages:', 'yellow');
-  log('   # Windows:', 'blue');
-  log('   del packages\\*\\package-lock.json packages\\*\\yarn.lock packages\\*\\pnpm-lock.yaml', 'blue');
+  
+  log('\n4. Remove individual lock files:', 'yellow');
   log('   # Unix/Mac:', 'blue');
   log('   rm -f packages/*/package-lock.json packages/*/yarn.lock packages/*/pnpm-lock.yaml', 'blue');
-  log('3. Install dependencies from root:', 'yellow');
+  log('   # Windows:', 'blue');
+  log('   del packages\\*\\package-lock.json packages\\*\\yarn.lock packages\\*\\pnpm-lock.yaml', 'blue');
+  
+  log('\n5. Clean root and reinstall properly:', 'yellow');
+  log('   rm -rf node_modules package-lock.json', 'blue');
   log('   npm install', 'blue');
-  log('4. Use workspace commands for package-specific operations:', 'yellow');
+  
+  log('\n6. Verify fix by running guard again:', 'yellow');
+  log('   npm run guard', 'blue');
+  
+  log('\n7. Use proper workspace commands going forward:', 'yellow');
   log('   npm run dev --workspace=@bugline/client', 'blue');
-  log('   npm run lint --workspace=@bugline/server', 'blue');
-  log('\n📚 Monorepo Best Practices:', 'yellow');
-  log('• Always run npm install from the root directory', 'blue');
-  log('• Use workspace commands for package-specific operations', 'blue');
-  log('• Share common dependencies through the shared package', 'blue');
-  log('• Use shared configurations in .config/ directory', 'blue');
+  log('   npm run build --workspace=@bugline/server', 'blue');
+  log('   npm install <package> --workspace=@bugline/client', 'blue');
+  
+  log('\n📚 MONOREPO RULES (DO NOT BREAK THESE):', 'red');
+  log('======================================', 'red');
+  log('• NEVER run npm install inside packages/', 'red');
+  log('• ALWAYS run npm install from root directory', 'red');
+  log('• NO packages should ever have their own node_modules', 'red');
+  log('• NO packages should have package-lock.json files', 'red');
+  log('• Use workspace commands for package-specific operations', 'red');
+  log('• All dependencies are managed at the root level', 'red');
+  
+  log('\n💡 Why this architecture matters:', 'yellow');
+  log('• Prevents dependency version conflicts', 'blue');
+  log('• Reduces disk space and installation time', 'blue');
+  log('• Ensures consistent dependency versions across packages', 'blue');
+  log('• Enables proper hoisting and deduplication', 'blue');
+  log('• Makes dependency management predictable and maintainable', 'blue');
 }
 
 function main() {

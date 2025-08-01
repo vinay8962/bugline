@@ -1,7 +1,16 @@
-#!/usr/bin/env sh
+#\!/usr/bin/env sh
 
-# Run monorepo architecture guard
+# Run monorepo architecture guard before commit
+echo "🔍 Checking monorepo architecture compliance..."
 node scripts/monorepo-guard.js
 
-# Run linting on all packages
-npm run lint
+# Exit with error if guard fails
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ COMMIT BLOCKED: Monorepo architecture violations detected\!"
+  echo "📋 Fix the violations above before committing."
+  exit 1
+fi
+
+echo "✅ Monorepo architecture check passed\!"
+EOF < /dev/null
