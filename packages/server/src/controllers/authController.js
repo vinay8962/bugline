@@ -12,6 +12,7 @@ import { generateToken } from "../middleware/authPrisma.js";
 import jwt from "jsonwebtoken";
 import googleAuthService from "../services/googleAuthService.js";
 import { prisma } from "../config/prisma.js";
+import { sendSuccess, sendError, createPagination } from "../utils/responseHelpers.js";
 
 // User registration
 export const register = asyncHandler(async (req, res) => {
@@ -43,20 +44,16 @@ export const register = asyncHandler(async (req, res) => {
   // Generate JWT token
   const token = generateToken(user.id);
 
-  res.status(201).json({
-    success: true,
-    data: {
-      user: {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        global_role: user.global_role,
-        email_verified: user.email_verified,
-      },
-      token,
+  sendSuccess(res, {
+    user: {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name,
+      global_role: user.global_role,
+      email_verified: user.email_verified,
     },
-    message: "User registered successfully. Please check your email to verify your account.",
-  });
+    token,
+  }, "User registered successfully. Please check your email to verify your account.", 201);
 });
 
 // User login
@@ -66,45 +63,35 @@ export const login = asyncHandler(async (req, res) => {
   // Verify user credentials using the service
   const authenticatedUser = await verifyUserPassword(email, password);
   if (!authenticatedUser) {
-    return res.status(401).json({
-      success: false,
-      message: "Invalid email or password",
-    });
+    return sendError(res, "Invalid email or password", 401);
   }
 
   // Generate JWT token
   const token = generateToken(authenticatedUser.id);
 
-  res.status(200).json({
-    success: true,
-    data: {
-      user: {
-        id: authenticatedUser.id,
-        email: authenticatedUser.email,
-        full_name: authenticatedUser.full_name,
-        global_role: authenticatedUser.global_role,
-        email_verified: authenticatedUser.email_verified,
-      },
-      token,
+  sendSuccess(res, {
+    user: {
+      id: authenticatedUser.id,
+      email: authenticatedUser.email,
+      full_name: authenticatedUser.full_name,
+      global_role: authenticatedUser.global_role,
+      email_verified: authenticatedUser.email_verified,
     },
-    message: "Login successful",
-  });
+    token,
+  }, "Login successful");
 });
 
 // Get current user
 export const getCurrentUser = asyncHandler(async (req, res) => {
   const user = await getUserById(req.user.id);
 
-  res.status(200).json({
-    success: true,
-    data: {
-      id: user.id,
-      email: user.email,
-      full_name: user.full_name,
-      global_role: user.global_role,
-      email_verified: user.email_verified,
-    },
-  });
+  sendSuccess(res, {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    global_role: user.global_role,
+    email_verified: user.email_verified,
+  }, "User data retrieved successfully");
 });
 
 // Verify email
@@ -117,20 +104,13 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     // Update user email verification status
     const user = await verifyUserEmail(decoded.userId);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        id: user.id,
-        email: user.email,
-        email_verified: user.email_verified,
-      },
-      message: "Email verified successfully",
-    });
+    sendSuccess(res, {
+      id: user.id,
+      email: user.email,
+      email_verified: user.email_verified,
+    }, "Email verified successfully");
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    return sendError(res, error.message, 400);
   }
 });
 
@@ -140,30 +120,18 @@ export const resendVerification = asyncHandler(async (req, res) => {
 
   const user = await getUserByEmail(email);
   if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: "User not found",
-    });
+    return sendError(res, "User not found", 404);
   }
 
   if (user.email_verified) {
-    return res.status(400).json({
-      success: false,
-      message: "Email already verified",
-    });
+    return sendError(res, "Email already verified", 400);
   }
 
   try {
     await EmailService.sendEmailVerification(user);
-    res.status(200).json({
-      success: true,
-      message: "Verification email sent successfully",
-    });
+    sendSuccess(res, null, "Verification email sent successfully");
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to send verification email",
-    });
+    return sendError(res, "Failed to send verification email", 500);
   }
 });
 
@@ -225,10 +193,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
   const { idToken } = req.body;
 
   if (!idToken) {
-    return res.status(400).json({
-      success: false,
-      message: "Google ID token is required",
-    });
+    return sendError(res, "Google ID token is required", 400);
   }
 
   console.log('🔑 Attempting Google login...');
@@ -247,29 +212,58 @@ export const googleLogin = asyncHandler(async (req, res) => {
       // Existing user - check role and redirect accordingly
       let responseData;
       
-      if (user.global_role === 'COMPANY_ADMIN') {
-        // Create encrypted token for Company Admin
-        const { encryptedToken, iv } = googleAuthService.createEncryptedToken({
-          userId: user.id,
-          email: user.email,
-          role: user.global_role,
-          timestamp: Date.now()
-        });
-        
-        responseData = {
-          user: {
-            id: user.id,
-            email: user.email,
-            full_name: user.full_name,
-            global_role: user.global_role,
-            is_verified: user.is_verified
+      if (user.global_role === 'USER') {
+        // Check if user is company admin in any company
+        const adminMembership = await prisma.companyUser.findFirst({
+          where: { 
+            user_id: user.id,
+            role: 'ADMIN'
           },
-          encryptedToken,
-          iv,
-          redirectTo: 'admin'
-        };
-      } else {
-        // Developer/QA user
+          include: {
+            company: true
+          }
+        });
+
+        if (adminMembership) {
+          // Create encrypted token for Company Admin
+          const { encryptedToken, iv } = googleAuthService.createEncryptedToken({
+            userId: user.id,
+            email: user.email,
+            role: 'ADMIN',
+            companyId: adminMembership.company_id,
+            timestamp: Date.now()
+          });
+          
+          responseData = {
+            user: {
+              id: user.id,
+              email: user.email,
+              full_name: user.full_name,
+              global_role: user.global_role,
+              is_verified: user.is_verified
+            },
+            encryptedToken,
+            iv,
+            redirectTo: 'admin'
+          };
+        } else {
+          // Regular user with company memberships
+          const token = generateToken(user.id);
+          
+          responseData = {
+            user: {
+              id: user.id,
+              email: user.email,
+              full_name: user.full_name,
+              global_role: user.global_role,
+              is_verified: user.is_verified
+            },
+            token,
+            redirectTo: 'dashboard'
+          };
+        }
+      } else if (user.global_role === 'SUPER_ADMIN') {
+        // Super admin gets full access
         const token = generateToken(user.id);
         
         responseData = {
@@ -281,61 +275,44 @@ export const googleLogin = asyncHandler(async (req, res) => {
             is_verified: user.is_verified
           },
           token,
-          redirectTo: user.global_role === 'DEVELOPER' ? 'developer-dashboard' : 'qa-dashboard'
+          redirectTo: 'super-admin-dashboard'
         };
       }
       
-      return res.status(200).json({
-        success: true,
-        data: responseData,
-        message: "Login successful"
-      });
+      return sendSuccess(res, responseData, "Login successful");
       
     } else {
-      // New user - Auto-create as Company Admin
+      // New user - Create as regular USER, they'll create/join companies later
       const newUser = await prisma.user.create({
         data: {
           email: googleUser.email,
           full_name: googleUser.name,
           google_id: googleUser.googleId,
           profile_picture: googleUser.picture,
-          global_role: 'COMPANY_ADMIN',
+          global_role: 'USER',
           email_verified: googleUser.emailVerified,
-          is_verified: true // Company Admins are auto-verified
+          is_verified: true // Google users are auto-verified
         }
       });
       
-      // Create encrypted token for new Company Admin
-      const { encryptedToken, iv } = googleAuthService.createEncryptedToken({
-        userId: newUser.id,
-        email: newUser.email,
-        role: newUser.global_role,
-        timestamp: Date.now()
-      });
+      // Create regular token for new user
+      const token = generateToken(newUser.id);
       
-      return res.status(201).json({
-        success: true,
-        data: {
-          user: {
-            id: newUser.id,
-            email: newUser.email,
-            full_name: newUser.full_name,
-            global_role: newUser.global_role,
-            is_verified: newUser.is_verified
-          },
-          encryptedToken,
-          iv,
-          redirectTo: 'admin'
+      return sendSuccess(res, {
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          full_name: newUser.full_name,
+          global_role: newUser.global_role,
+          is_verified: newUser.is_verified
         },
-        message: "Account created successfully as Company Admin"
-      });
+        token,
+        redirectTo: 'onboarding' // They need to create/join a company
+      }, "Account created successfully. Please create or join a company to continue.", 201);
     }
     
   } catch (error) {
     console.error('Google login error:', error);
-    return res.status(401).json({
-      success: false,
-      message: "Invalid Google token or authentication failed",
-    });
+    return sendError(res, "Invalid Google token or authentication failed", 401);
   }
 });

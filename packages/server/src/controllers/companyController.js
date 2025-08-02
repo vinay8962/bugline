@@ -1,5 +1,6 @@
 import * as CompanyService from '../services/companyService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { sendSuccess, sendError, createPagination } from '../utils/responseHelpers.js';
 
 // Create company
 export const createCompany = asyncHandler(async (req, res) => {
@@ -8,11 +9,7 @@ export const createCompany = asyncHandler(async (req, res) => {
   
   const company = await CompanyService.createCompany(companyData, creatorId);
   
-  res.status(201).json({
-    success: true,
-    data: company,
-    message: 'Company created successfully'
-  });
+  sendSuccess(res, company, 'Company created successfully', 201);
 });
 
 // Get all companies
@@ -28,11 +25,7 @@ export const getCompanies = asyncHandler(async (req, res) => {
     filters
   );
   
-  res.json({
-    success: true,
-    data: result.companies,
-    pagination: result.pagination
-  });
+  sendSuccess(res, result.companies, 'Companies retrieved successfully', 200, result.pagination);
 });
 
 // Get company by ID

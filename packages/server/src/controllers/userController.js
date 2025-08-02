@@ -1,5 +1,6 @@
 import * as UserService from '../services/userService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { sendSuccess, sendError, createPagination } from '../utils/responseHelpers.js';
 
 // Get all users
 export const getUsers = asyncHandler(async (req, res) => {
@@ -14,11 +15,7 @@ export const getUsers = asyncHandler(async (req, res) => {
     filters
   );
   
-  res.json({
-    success: true,
-    data: result.users,
-    pagination: result.pagination
-  });
+  sendSuccess(res, result.users, 'Users retrieved successfully', 200, result.pagination);
 });
 
 // Get user by ID
