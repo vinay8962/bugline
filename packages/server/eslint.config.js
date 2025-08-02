@@ -1,26 +1,34 @@
+import sharedConfig from '../../.config/eslint.config.js';
+
 export default [
+  ...sharedConfig,
   {
-    files: ["**/*.js"],
+    files: ['**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: "module",
+      sourceType: 'module',
       globals: {
-        console: "readonly",
-        process: "readonly",
-        Buffer: "readonly",
-        __dirname: "readonly",
-        __filename: "readonly",
-        global: "readonly",
-        module: "readonly",
-        require: "readonly",
-        exports: "readonly"
-      }
+        ...sharedConfig[1].languageOptions.globals,
+        process: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        // Jest globals
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        jest: 'readonly',
+      },
     },
     rules: {
-      "no-console": "warn",
-      "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-      "prefer-const": "error",
-      "no-var": "error"
-    }
-  }
+      ...sharedConfig[1].rules,
+      'no-console': 'off', // Allow console in server for logging
+      'no-useless-catch': 'off', // Allow explicit try/catch for error handling
+      'no-useless-escape': 'off', // Allow escape characters in regex
+    },
+  },
 ];

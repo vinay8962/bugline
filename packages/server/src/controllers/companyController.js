@@ -1,205 +1,128 @@
-import { CompanyService } from "../services/companyService.js";
-import { asyncHandler } from "../middleware/errorHandler.js";
+import * as CompanyService from '../services/companyService.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
+import { sendSuccess, sendError, createPagination } from '../utils/responseHelpers.js';
 
-export class CompanyController {
-  // Get all companies with pagination and search
-  static getCompanies = asyncHandler(async (req, res) => {
-    const {
-      page = 1,
-      limit = 10,
-      search = "",
-      sort_by = "created_at",
-      sort_order = "desc",
-    } = req.query;
+// Create company
+export const createCompany = asyncHandler(async (req, res) => {
+  const companyData = req.body;
+  const creatorId = req.user.id;
+  
+  const company = await CompanyService.createCompany(companyData, creatorId);
+  
+  sendSuccess(res, company, 'Company created successfully', 201);
+});
 
-    const result = await CompanyService.getCompanies(
-      parseInt(page),
-      parseInt(limit),
-      search,
-      sort_by,
-      sort_order
-    );
+// Get all companies
+export const getCompanies = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, name } = req.query;
+  
+  const filters = {};
+  if (name) filters.name = name;
+  
+  const result = await CompanyService.getAllCompanies(
+    parseInt(page), 
+    parseInt(limit), 
+    filters
+  );
+  
+  sendSuccess(res, result.companies, 'Companies retrieved successfully', 200, result.pagination);
+});
 
-    res.status(200).json({
-      success: true,
-      data: result.companies,
-      pagination: result.pagination,
-    });
+// Get company by ID
+export const getCompany = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  
+  const company = await CompanyService.getCompanyById(companyId);
+  
+  res.json({
+    success: true,
+    data: company
   });
+});
 
-  // Get company by ID
-  static getCompanyById = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-
-    const company = await CompanyService.getCompanyById(companyId);
-
-    res.status(200).json({
-      success: true,
-      data: company,
-    });
+// Update company
+export const updateCompany = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const updateData = req.body;
+  
+  const company = await CompanyService.updateCompany(companyId, updateData);
+  
+  res.json({
+    success: true,
+    data: company,
+    message: 'Company updated successfully'
   });
+});
 
-  // Create company
-  static createCompany = asyncHandler(async (req, res) => {
-    const company = await CompanyService.createCompany(req.body, req.user.id);
-
-    res.status(201).json({
-      success: true,
-      data: company,
-      message: "Company created successfully",
-    });
+// Delete company
+export const deleteCompany = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  
+  const result = await CompanyService.deleteCompany(companyId);
+  
+  res.json({
+    success: true,
+    message: result.message
   });
+});
 
-  // Update company
-  static updateCompany = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-
-    const updatedCompany = await CompanyService.updateCompany(
-      companyId,
-      req.body
-    );
-
-    res.status(200).json({
-      success: true,
-      data: updatedCompany,
-      message: "Company updated successfully",
-    });
+// Search companies
+export const searchCompanies = asyncHandler(async (req, res) => {
+  const { q: searchTerm, limit = 10 } = req.query;
+  
+  const companies = await CompanyService.searchCompanies(searchTerm, parseInt(limit));
+  
+  res.json({
+    success: true,
+    data: companies
   });
+});
 
-  // Delete company
-  static deleteCompany = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-
-    await CompanyService.deleteCompany(companyId);
-
-    res.status(200).json({
-      success: true,
-      message: "Company deleted successfully",
-    });
+// Company member management
+export const getCompanyMembers = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  
+  const members = await CompanyService.getCompanyMembers(companyId);
+  
+  res.json({
+    success: true,
+    data: members
   });
+});
 
-  // Get company members
-  static getCompanyMembers = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-    const { page = 1, limit = 10 } = req.query;
-
-    const result = await CompanyService.getCompanyMembers(
-      companyId,
-      parseInt(page),
-      parseInt(limit)
-    );
-
-    res.status(200).json({
-      success: true,
-      data: result.members,
-      pagination: result.pagination,
-    });
+export const addUserToCompany = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const { userId, role = 'OTHERS' } = req.body;
+  
+  const companyUser = await CompanyService.addUserToCompany(userId, companyId, role);
+  
+  res.status(201).json({
+    success: true,
+    data: companyUser,
+    message: 'User added to company successfully'
   });
+});
 
-  // Get company statistics
-  static getCompanyStats = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-
-    const stats = await CompanyService.getCompanyStats(companyId);
-
-    res.status(200).json({
-      success: true,
-      data: stats,
-    });
+export const removeUserFromCompany = asyncHandler(async (req, res) => {
+  const { companyId, userId } = req.params;
+  
+  const result = await CompanyService.removeUserFromCompany(userId, companyId);
+  
+  res.json({
+    success: true,
+    message: result.message
   });
+});
 
-  // Search companies
-  static searchCompanies = asyncHandler(async (req, res) => {
-    const { q, limit = 10 } = req.query;
-
-    if (!q) {
-      return res.status(400).json({
-        success: false,
-        message: "Search query is required",
-      });
-    }
-
-    const companies = await CompanyService.searchCompanies(q, parseInt(limit));
-
-    res.status(200).json({
-      success: true,
-      data: companies,
-    });
+export const updateUserCompanyRole = asyncHandler(async (req, res) => {
+  const { companyId, userId } = req.params;
+  const { role } = req.body;
+  
+  const companyUser = await CompanyService.updateUserRole(userId, companyId, role);
+  
+  res.json({
+    success: true,
+    data: companyUser,
+    message: 'User role updated successfully'
   });
-
-  // Get user's companies
-  static getUserCompanies = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-
-    const companies = await CompanyService.getUserCompanies(userId);
-
-    res.status(200).json({
-      success: true,
-      data: companies,
-    });
-  });
-
-  // Get current user's companies
-  static getCurrentUserCompanies = asyncHandler(async (req, res) => {
-    const companies = await CompanyService.getUserCompanies(req.user.id);
-
-    res.status(200).json({
-      success: true,
-      data: companies,
-    });
-  });
-
-  // Update company settings
-  static updateCompanySettings = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-    const { settings } = req.body;
-
-    const updatedCompany = await CompanyService.updateCompanySettings(
-      companyId,
-      settings
-    );
-
-    res.status(200).json({
-      success: true,
-      data: updatedCompany,
-      message: "Company settings updated successfully",
-    });
-  });
-
-  // Get companies by industry
-  static getCompaniesByIndustry = asyncHandler(async (req, res) => {
-    const { industry } = req.params;
-    const { page = 1, limit = 10 } = req.query;
-
-    const result = await CompanyService.getCompaniesByIndustry(
-      industry,
-      parseInt(page),
-      parseInt(limit)
-    );
-
-    res.status(200).json({
-      success: true,
-      data: result.companies,
-      pagination: result.pagination,
-    });
-  });
-
-  // Get company by name
-  static getCompanyByName = asyncHandler(async (req, res) => {
-    const { name } = req.params;
-
-    const company = await CompanyService.getCompanyByName(name);
-
-    if (!company) {
-      return res.status(404).json({
-        success: false,
-        message: "Company not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: company,
-    });
-  });
-}
+});

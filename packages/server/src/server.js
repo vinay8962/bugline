@@ -1,114 +1,109 @@
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import compression from "compression";
-import rateLimit from "express-rate-limit";
-import morgan from "morgan";
-import dotenv from "dotenv";
-import "express-async-errors";
+import { app, PORT } from "./app.js";
+import { checkDatabaseConnection, disconnectPrisma } from "./config/prisma.js";
+import { 
+  logInfo, 
+  logError, 
+  logSystem, 
+  logSecurity 
+} from "./utils/logger.js";
 
-import routes from "./routes/index.js";
-import { errorHandler } from "./middleware/errorHandler.js";
-
-// Load environment variables
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Security middleware
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
-  })
-);
-
-// CORS configuration
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
-);
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: {
-    success: false,
-    message: "Too many requests from this IP, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use(limiter);
-
-// Compression middleware
-app.use(compression());
-
-// Body parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Logging middleware
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-} else {
-  app.use(morgan("combined"));
-}
-
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// API routes
-app.use("/", routes);
-
-// Global error handling middleware (must be last)
-app.use(errorHandler);
+let server;
 
 // Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully");
-  process.exit(0);
+const gracefulShutdown = async (signal) => {
+  logSystem(`Server shutdown initiated`, { signal });
+  
+  if (server) {
+    server.close(async () => {
+      logSystem("HTTP server closed");
+      await disconnectPrisma();
+      logSystem("Server shutdown completed");
+      process.exit(0);
+    });
+
+    // Force close after 10s
+    setTimeout(async () => {
+      logError("Could not close connections in time, forcefully shutting down");
+      await disconnectPrisma();
+      process.exit(1);
+    }, 10000);
+  } else {
+    // No server instance (e.g., startup failure)
+    logSystem("No server instance to close");
+    await disconnectPrisma();
+    process.exit(1);
+  }
+};
+
+// Start server with database health check
+const startServer = async () => {
+  try {
+    logSystem("Starting server initialization");
+    
+    // Check database connection before starting server
+    await checkDatabaseConnection();
+    
+    server = app.listen(PORT, () => {
+      logSystem("Server started successfully", {
+        port: PORT,
+        environment: process.env.NODE_ENV || "development",
+        healthCheck: `http://localhost:${PORT}/health`,
+        apiDocs: `http://localhost:${PORT}/docs`
+      });
+      
+      console.log(`🚀 BugLine API Server running on port ${PORT}`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(`📚 API Docs: http://localhost:${PORT}/docs`);
+    });
+
+    // Add error handling for the server
+    server.on('error', (error) => {
+      logError("Server error occurred", error);
+      gracefulShutdown("SERVER_ERROR");
+    });
+
+    return server;
+  } catch (error) {
+    logError("Failed to start server", error);
+    
+    // Provide more specific error messages
+    if (error.message.includes('Database connection failed')) {
+      logError("Database connection failed. Please check your DATABASE_URL environment variable.");
+    } else if (error.message.includes('EADDRINUSE')) {
+      logError("Port is already in use. Please try a different port.");
+    } else {
+      logError("Unexpected error during server startup.");
+    }
+    
+    gracefulShutdown("STARTUP_ERROR");
+  }
+};
+
+// Handle process signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logError('Uncaught Exception', error);
+  gracefulShutdown('UNCAUGHT_EXCEPTION');
 });
 
-process.on("SIGINT", () => {
-  console.log("SIGINT received, shutting down gracefully");
-  process.exit(0);
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logError('Unhandled Rejection', { reason, promise });
+  gracefulShutdown('UNHANDLED_REJECTION');
 });
 
-// Unhandled promise rejection handler
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Promise Rejection:", err);
-  process.exit(1);
+// Log process events
+process.on('exit', (code) => {
+  logSystem(`Process exiting with code ${code}`);
 });
 
-// Uncaught exception handler
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err);
-  process.exit(1);
+process.on('warning', (warning) => {
+  logError('Process warning', warning);
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 BugLine API Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`📚 API Docs: http://localhost:${PORT}/docs`);
-});
-
-export default app;
+// Start the server
+startServer();

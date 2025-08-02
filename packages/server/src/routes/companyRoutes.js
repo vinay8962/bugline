@@ -1,5 +1,16 @@
 import express from "express";
-import { CompanyController } from "../controllers/companyController.js";
+import {
+  createCompany,
+  getCompanies,
+  getCompany,
+  updateCompany,
+  deleteCompany,
+  searchCompanies,
+  getCompanyMembers,
+  addUserToCompany,
+  removeUserFromCompany,
+  updateUserCompanyRole
+} from "../controllers/companyController.js";
 import {
   authenticateToken,
   requireCompanyAccess,
@@ -9,57 +20,58 @@ import { validate, companySchemas } from "../middleware/validation.js";
 
 const router = express.Router();
 
-// Public routes (if any)
-router.get("/search", CompanyController.searchCompanies);
-router.get("/industry/:industry", CompanyController.getCompaniesByIndustry);
-router.get("/name/:name", CompanyController.getCompanyByName);
+
 
 // Protected routes - require authentication
 router.use(authenticateToken);
 
+// Public routes (if any)
+router.get("/search", searchCompanies);
+
 // Company management routes
-router.get("/", CompanyController.getCompanies);
+router.get("/", getCompanies);
 router.post(
   "/",
   validate(companySchemas.create),
-  CompanyController.createCompany
+  createCompany
 );
 
 // Company-specific routes
 router.get(
   "/:companyId",
   requireCompanyAccess,
-  CompanyController.getCompanyById
+  getCompany
 );
 router.put(
   "/:companyId",
   requireCompanyAdmin,
   validate(companySchemas.update),
-  CompanyController.updateCompany
+  updateCompany
 );
 router.delete(
   "/:companyId",
   requireCompanyAdmin,
-  CompanyController.deleteCompany
+  deleteCompany
 );
 router.get(
   "/:companyId/members",
   requireCompanyAccess,
-  CompanyController.getCompanyMembers
+  getCompanyMembers
 );
-router.get(
-  "/:companyId/stats",
-  requireCompanyAccess,
-  CompanyController.getCompanyStats
+router.post(
+  "/:companyId/members",
+  requireCompanyAdmin,
+  addUserToCompany
+);
+router.delete(
+  "/:companyId/members/:userId",
+  requireCompanyAdmin,
+  removeUserFromCompany
 );
 router.put(
-  "/:companyId/settings",
+  "/:companyId/members/:userId/role",
   requireCompanyAdmin,
-  CompanyController.updateCompanySettings
+  updateUserCompanyRole
 );
-
-// User's companies
-router.get("/user/:userId", CompanyController.getUserCompanies);
-router.get("/me/companies", CompanyController.getCurrentUserCompanies);
 
 export default router;

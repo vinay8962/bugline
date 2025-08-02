@@ -32,9 +32,26 @@
     "clean:client": "npm run clean --workspace=@bugline/client",
     "clean:server": "npm run clean --workspace=@bugline/server",
     "typecheck": "npm run typecheck --workspace=@bugline/client && npm run typecheck --workspace=@bugline/server",
-    "preview": "npm run preview --workspace=@bugline/client"
+    "preview": "npm run preview --workspace=@bugline/client",
+    "install:all": "npm install && npm install --workspace=@bugline/client && npm install --workspace=@bugline/server",
+    "clean:all": "rm -rf node_modules packages/*/node_modules packages/*/dist packages/*/coverage",
+    "reset": "npm run clean:all && npm run install:all",
+    "guard": "node scripts/monorepo-guard.js",
+    "guard:fix": "node scripts/fix-monorepo.js",
+    "setup:check": "node scripts/setup-cross-platform.js",
+    "eslint:fix": "node scripts/fix-eslint.js",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "husky": "^9.0.11"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "google-auth-library": "^10.2.0",
+    "react-toastify": "^11.0.5"
   }
 }

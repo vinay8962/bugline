@@ -12,10 +12,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@bugline/shared": "file:../shared",
     "@react-oauth/google": "^0.12.2",
     "@reduxjs/toolkit": "^2.8.2",
     "@tailwindcss/vite": "^4.1.11",
     "axios": "^1.10.0",
+    "crypto-js": "^4.2.0",
     "framer-motion": "^12.23.9",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.525.0",
