@@ -1,6 +1,13 @@
 import express from 'express';
-import { ProjectController } from '../controllers/projectController.js';
-import { authenticateToken } from '../middleware/authPrisma.js';
+import {
+  createProject,
+  getProject,
+  updateProject,
+  deleteProject,
+  getCompanyProjects,
+  searchProjects
+} from '../controllers/projectController.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -8,11 +15,11 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Project CRUD routes
-router.post('/companies/:companyId/projects', ProjectController.createProject);
-router.get('/companies/:companyId/projects', ProjectController.getCompanyProjects);
-router.get('/companies/:companyId/projects/search', ProjectController.searchProjects);
-router.get('/projects/:projectId', ProjectController.getProject);
-router.put('/projects/:projectId', ProjectController.updateProject);
-router.delete('/projects/:projectId', ProjectController.deleteProject);
+router.post('/companies/:companyId/projects', createProject);
+router.get('/companies/:companyId/projects', getCompanyProjects);
+router.get('/companies/:companyId/projects/search', searchProjects);
+router.get('/projects/:projectId', getProject);
+router.put('/projects/:projectId', updateProject);
+router.delete('/projects/:projectId', deleteProject);
 
 export default router;

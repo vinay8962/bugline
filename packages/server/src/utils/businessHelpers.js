@@ -5,18 +5,17 @@ import bcrypt from 'bcrypt';
 // Role management helpers
 export const canUserAccessCompany = async (userId, companyId, requiredRole) => {
   try {
-    const membership = await prisma.memberships.findFirst({
+    const membership = await prisma.companyUser.findFirst({
       where: { 
         user_id: userId, 
         company_id: companyId 
       },
       select: {
-        role: true,
-        status: true
+        role: true
       }
     });
     
-    if (!membership || membership.status !== 'active') {
+    if (!membership) {
       return false;
     }
     
@@ -28,18 +27,17 @@ export const canUserAccessCompany = async (userId, companyId, requiredRole) => {
 
 export const getUserEffectiveRole = async (userId, companyId) => {
   try {
-    const membership = await prisma.memberships.findFirst({
+    const membership = await prisma.companyUser.findFirst({
       where: { 
         user_id: userId, 
         company_id: companyId 
       },
       select: {
-        role: true,
-        status: true
+        role: true
       }
     });
     
-    if (!membership || membership.status !== 'active') {
+    if (!membership) {
       return null;
     }
     
@@ -81,27 +79,25 @@ export const hasRequiredRole = (userRole, requiredRole) => {
 export const calculateUserStats = async (userId) => {
   try {
     const [companyCount, adminCount, bugCount, assignedBugCount] = await Promise.all([
-      prisma.memberships.count({
+      prisma.companyUser.count({
+        where: { 
+          user_id: userId
+        }
+      }),
+      prisma.companyUser.count({
         where: { 
           user_id: userId, 
-          status: 'active' 
+          role: 'ADMIN'
         }
       }),
-      prisma.memberships.count({
+      prisma.bug.count({
         where: { 
-          user_id: userId, 
-          role: 'admin',
-          status: 'active' 
+          assigned_to: userId 
         }
       }),
-      prisma.bugReport.count({
+      prisma.bug.count({
         where: { 
-          reportedBy: userId 
-        }
-      }),
-      prisma.bugReport.count({
-        where: { 
-          assignedTo: userId 
+          assigned_to: userId 
         }
       })
     ]);
@@ -121,32 +117,30 @@ export const calculateUserStats = async (userId) => {
 export const calculateCompanyStats = async (companyId) => {
   try {
     const [userCount, projectCount, bugCount, activeBugCount] = await Promise.all([
-      prisma.memberships.count({
+      prisma.companyUser.count({
         where: { 
-          company_id: companyId, 
-          status: 'active' 
+          company_id: companyId
         }
       }),
       prisma.project.count({
         where: { 
-          companyId, 
-          isActive: true 
+          company_id: companyId
         }
       }),
-      prisma.bugReport.count({
+      prisma.bug.count({
         where: { 
           project: { 
-            companyId 
+            company_id: companyId 
           } 
         }
       }),
-      prisma.bugReport.count({
+      prisma.bug.count({
         where: { 
           project: { 
-            companyId 
+            company_id: companyId 
           },
           status: {
-            in: ['OPEN', 'IN_PROGRESS', 'REVIEW']
+            in: ['open', 'in_progress']
           }
         }
       })
@@ -234,17 +228,14 @@ export const verifyUserPassword = async (email, password) => {
 // Company access helpers
 export const isUserInCompany = async (userId, companyId) => {
   try {
-    const membership = await prisma.memberships.findFirst({
+    const membership = await prisma.companyUser.findFirst({
       where: { 
         user_id: userId, 
         company_id: companyId 
-      },
-      select: {
-        status: true
       }
     });
     
-    return membership && membership.status === 'active';
+    return !!membership;
   } catch (error) {
     return false;
   }
@@ -252,14 +243,13 @@ export const isUserInCompany = async (userId, companyId) => {
 
 export const getCompanyAdmins = async (companyId) => {
   try {
-    return await prisma.memberships.findMany({
+    return await prisma.companyUser.findMany({
       where: { 
         company_id: companyId, 
-        role: 'admin',
-        status: 'active' 
+        role: 'ADMIN'
       },
       include: {
-        users_memberships_user_idTousers: {
+        user: {
           select: {
             id: true,
             email: true,
@@ -275,14 +265,13 @@ export const getCompanyAdmins = async (companyId) => {
 
 export const getCompanyDevelopers = async (companyId) => {
   try {
-    return await prisma.memberships.findMany({
+    return await prisma.companyUser.findMany({
       where: { 
         company_id: companyId, 
-        role: 'developer',
-        status: 'active' 
+        role: 'DEVELOPER'
       },
       include: {
-        users_memberships_user_idTousers: {
+        user: {
           select: {
             id: true,
             email: true,
@@ -298,14 +287,13 @@ export const getCompanyDevelopers = async (companyId) => {
 
 export const getCompanyQA = async (companyId) => {
   try {
-    return await prisma.memberships.findMany({
+    return await prisma.companyUser.findMany({
       where: { 
         company_id: companyId, 
-        role: 'qa',
-        status: 'active' 
+        role: 'QA'
       },
       include: {
-        users_memberships_user_idTousers: {
+        user: {
           select: {
             id: true,
             email: true,

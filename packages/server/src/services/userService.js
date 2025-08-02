@@ -17,12 +17,17 @@ export const createUser = async (userData) => {
     // Hash password before storing
     const hashedPassword = await hashPassword(userData.password);
     
+    // Determine email verification status based on role
+    const globalRole = userData.global_role || 'USER';
+    const emailVerified = globalRole === 'SUPER_ADMIN' || globalRole === 'ADMIN' ? true : false;
+    
     const user = await prisma.user.create({
       data: {
         email: userData.email,
         password_hash: hashedPassword,
         full_name: userData.full_name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
-        global_role: userData.global_role || 'USER'
+        global_role: globalRole,
+        email_verified: emailVerified
       }
     });
     
@@ -238,6 +243,23 @@ export const updateUserRole = async (userId, newRole) => {
       where: { id: userId },
       data: { 
         global_role: newRole
+      }
+    });
+    
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (error) {
+    throw handlePrismaError(error);
+  }
+};
+
+// Email verification
+export const verifyUserEmail = async (userId) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        email_verified: true
       }
     });
     

@@ -1,5 +1,19 @@
 import express from "express";
-import { UserController } from "../controllers/userController.js";
+import {
+  getUsers,
+  getUserById,
+  getCurrentUser,
+  updateUser,
+  updateCurrentUser,
+  deleteUser,
+  searchUsers,
+  getUserCompanies,
+  getUserByEmail,
+  updateUserPassword,
+  updateUserRole,
+  getCurrentUserStats,
+  getUserStats
+} from "../controllers/userController.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { validate, userSchemas } from "../middleware/validation.js";
 import { requireSuperAdmin } from "../middleware/superAdminValidator.js";
@@ -13,37 +27,37 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Current user routes
-router.get("/me", UserController.getCurrentUser);
+router.get("/me", getCurrentUser);
 router.put(
   "/me",
   validate(userSchemas.updateProfile),
-  UserController.updateCurrentUser
+  updateCurrentUser
 );
-router.get("/me/companies", UserController.getUserCompanies);
-router.get("/me/stats", UserController.getCurrentUserStats);
+router.get("/me/companies", getUserCompanies);
+router.get("/me/stats", getCurrentUserStats);
 
 // User management routes (admin only)
-router.get("/", UserController.getUsers);
-router.get("/search", UserController.searchUsers);
-router.get("/:userId", UserController.getUserById);
+router.get("/", getUsers);
+router.get("/search", searchUsers);
+router.get("/:userId", getUserById);
 router.put(
   "/:userId",
   validate(userSchemas.updateProfile),
-  UserController.updateUser
+  updateUser
 );
-router.delete("/:userId", UserController.deleteUser);
-router.get("/:userId/companies", UserController.getUserCompanies);
-router.get("/:userId/stats", UserController.getUserStats);
+router.delete("/:userId", deleteUser);
+router.get("/:userId/companies", getUserCompanies);
+router.get("/:userId/stats", getUserStats);
 
 // Super admin only routes
 router.put(
   "/:userId/role",
   requireSuperAdmin,
   validate(userSchemas.updateGlobalRole),
-  UserController.updateUserRole
+  updateUserRole
 );
 
 // Email lookup (admin only)
-router.get("/email/:email", UserController.getUserByEmail);
+router.get("/email/:email", getUserByEmail);
 
 export default router;

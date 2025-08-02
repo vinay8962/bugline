@@ -1,5 +1,6 @@
 import * as UserService from '../services/userService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { sendSuccess, sendError, createPagination } from '../utils/responseHelpers.js';
 
 // Get all users
 export const getUsers = asyncHandler(async (req, res) => {
@@ -14,18 +15,24 @@ export const getUsers = asyncHandler(async (req, res) => {
     filters
   );
   
-  res.json({
-    success: true,
-    data: result.users,
-    pagination: result.pagination
-  });
+  sendSuccess(res, result.users, 'Users retrieved successfully', 200, result.pagination);
 });
 
 // Get user by ID
-export const getUser = asyncHandler(async (req, res) => {
+export const getUserById = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   
   const user = await UserService.getUserById(userId);
+  
+  res.json({
+    success: true,
+    data: user
+  });
+});
+
+// Get current user (for authenticated user)
+export const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await UserService.getUserById(req.user.id);
   
   res.json({
     success: true,
@@ -44,6 +51,19 @@ export const updateUser = asyncHandler(async (req, res) => {
     success: true,
     data: user,
     message: 'User updated successfully'
+  });
+});
+
+// Update current user
+export const updateCurrentUser = asyncHandler(async (req, res) => {
+  const updateData = req.body;
+  
+  const user = await UserService.updateUser(req.user.id, updateData);
+  
+  res.json({
+    success: true,
+    data: user,
+    message: 'Profile updated successfully'
   });
 });
 
@@ -83,6 +103,25 @@ export const getUserCompanies = asyncHandler(async (req, res) => {
   });
 });
 
+// Get user by email
+export const getUserByEmail = asyncHandler(async (req, res) => {
+  const { email } = req.params;
+  
+  const user = await UserService.getUserByEmail(email);
+  
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found'
+    });
+  }
+  
+  res.json({
+    success: true,
+    data: user
+  });
+});
+
 // Update user password
 export const updateUserPassword = asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -108,5 +147,27 @@ export const updateUserRole = asyncHandler(async (req, res) => {
     success: true,
     data: user,
     message: 'User role updated successfully'
+  });
+});
+
+// Get current user stats
+export const getCurrentUserStats = asyncHandler(async (req, res) => {
+  // This would need to be implemented in the service
+  res.json({
+    success: true,
+    data: {
+      message: 'User stats not implemented yet'
+    }
+  });
+});
+
+// Get user stats
+export const getUserStats = asyncHandler(async (req, res) => {
+  // This would need to be implemented in the service
+  res.json({
+    success: true,
+    data: {
+      message: 'User stats not implemented yet'
+    }
   });
 });

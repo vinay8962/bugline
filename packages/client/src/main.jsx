@@ -9,16 +9,12 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const CLIENT_ID =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-  "906738240042-aobbnh1ggsa82q0671fklufktpmqdm09.apps.googleusercontent.com";
+  "70893352545-4u1ato7bbtm7c6k12muh6mcibrsahca3.apps.googleusercontent.com";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <Provider store={store}>
-      <GoogleOAuthProvider clientId={CLIENT_ID}>
-        <ToastContainer position="top-right" autoClose={3000} />
-        <App />
-      </GoogleOAuthProvider>
-    </Provider>
+    <GoogleOAuthProvider clientId={CLIENT_ID}>
+      <App />
+    </GoogleOAuthProvider>
   </StrictMode>
 );
