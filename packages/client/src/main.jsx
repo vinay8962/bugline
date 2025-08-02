@@ -7,14 +7,34 @@ import { Provider } from "react-redux";
 import { store } from "./redux/store.js";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
-const CLIENT_ID =
-  "70893352545-4u1ato7bbtm7c6k12muh6mcibrsahca3.apps.googleusercontent.com";
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+if (!CLIENT_ID) {
+  console.error('VITE_GOOGLE_CLIENT_ID environment variable is required');
+}
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={CLIENT_ID}>
-      <App />
-    </GoogleOAuthProvider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <GoogleOAuthProvider clientId={CLIENT_ID}>
+          <App />
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="dark"
+          />
+        </GoogleOAuthProvider>
+      </Provider>
+    </ErrorBoundary>
   </StrictMode>
 );

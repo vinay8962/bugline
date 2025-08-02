@@ -159,7 +159,7 @@ const Register = ({ onClick }) => {
       <button
         onClick={handleGoogleRegister}
         type="button"
-        className="w-full flex items-center justify-center gap-2 border border-gray-700 rounded-md px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 transition"
+        className="google-login-button w-full flex items-center justify-center gap-2 border border-gray-700 rounded-lg px-4 py-3 text-sm font-medium text-white hover:bg-gray-600 hover:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-200"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -174,7 +174,7 @@ const Register = ({ onClick }) => {
         Already have an account?{" "}
         <span
           onClick={onClick}
-          className="text-[#2057cd] hover:underline cursor-pointer"
+          className="text-[#2057cd] hover:text-[#1e40af] hover:underline cursor-pointer transition-colors"
         >
           Sign in
         </span>

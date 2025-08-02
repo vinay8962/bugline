@@ -9,12 +9,27 @@ import "express-async-errors";
 
 import routes from "./routes/index.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { 
+  logInfo, 
+  logSystem, 
+  logSecurity, 
+  requestLogger, 
+  errorLogger, 
+  morganConfig 
+} from "./utils/logger.js";
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Log application startup
+logSystem("Application starting", { 
+  port: PORT, 
+  environment: process.env.NODE_ENV || 'development',
+  nodeVersion: process.version 
+});
 
 // Security middleware
 app.use(
@@ -30,6 +45,8 @@ app.use(
   })
 );
 
+logSystem("Security middleware configured");
+
 // CORS configuration
 app.use(
   cors({
@@ -39,6 +56,8 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
+
+logSystem("CORS middleware configured");
 
 // Rate limiting
 const limiter = rateLimit({
@@ -50,9 +69,22 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    logSecurity("Rate limit exceeded", {
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+      path: req.path
+    });
+    res.status(429).json({
+      success: false,
+      message: "Too many requests from this IP, please try again later.",
+    });
+  }
 });
 
 app.use(limiter);
+
+logSystem("Rate limiting middleware configured");
 
 // Compression middleware
 app.use(compression());
@@ -61,23 +93,21 @@ app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Logging middleware
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-} else {
-  app.use(morgan("combined"));
-}
+// Enhanced logging middleware
+app.use(requestLogger);
 
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
+// Morgan logging for HTTP requests
+app.use(morganConfig);
 
 // API routes
 app.use("/", routes);
 
+logSystem("Routes configured");
+
 // Global error handling middleware (must be last)
+app.use(errorLogger);
 app.use(errorHandler);
+
+logSystem("Error handling middleware configured");
 
 export { app, PORT };

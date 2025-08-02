@@ -6,6 +6,8 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import AddEmployee from "./pages/Employee/AddEmployee";
 import Profile from "./pages/Profile";
 import PrivateRoute from "./components/Private/PrivateRoute";
+import AddCompany from "./components/AddCompany";
+
 const App = () => {
   return (
     <BrowserRouter>
@@ -29,7 +31,14 @@ const App = () => {
             </PrivateRoute>
           }
         />
-
+        <Route
+          path="/add-company"
+          element={
+            <PrivateRoute>
+              <AddCompany />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/profile"
           element={

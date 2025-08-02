@@ -1,6 +1,12 @@
 import * as UserService from '../services/userService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { sendSuccess, sendError, createPagination } from '../utils/responseHelpers.js';
+import { createSecureAuthResponse } from '../utils/encryption.js';
+import { 
+  logInfo, 
+  logError, 
+  logPerformance 
+} from '../utils/logger.js';
 
 // Get all users
 export const getUsers = asyncHandler(async (req, res) => {
@@ -32,12 +38,22 @@ export const getUserById = asyncHandler(async (req, res) => {
 
 // Get current user (for authenticated user)
 export const getCurrentUser = asyncHandler(async (req, res) => {
-  const user = await UserService.getUserById(req.user.id);
+  const startTime = Date.now();
   
-  res.json({
+  logInfo("Get current user request", { userId: req.user.id });
+
+  const user = await UserService.getUserById(req.user.id);
+
+  const duration = Date.now() - startTime;
+  logPerformance("Get current user", duration, { userId: user.id });
+
+  // Create secure encrypted response (no token needed for current user)
+  const secureResponse = createSecureAuthResponse(user, null, null);
+
+  sendSuccess(res, {
+    ...secureResponse,
     success: true,
-    data: user
-  });
+  }, "User data retrieved successfully");
 });
 
 // Update user

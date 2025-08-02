@@ -1,8 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { secureStorage } from "../../utils/encryption.js";
 
 const initialState = {
-  user: JSON.parse(localStorage.getItem("user")) || null,
-  accessToken: localStorage.getItem("access_token") || null,
+  user: secureStorage.getItem("user") || null,
+  accessToken: secureStorage.getItem("authToken") || null,
 };
 
 const authSlice = createSlice({
@@ -13,15 +14,15 @@ const authSlice = createSlice({
       const { user, accessToken } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
-      // Save to localStorage
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("access_token", accessToken);
+      // Save to secure storage
+      if (user) secureStorage.setItem("user", user);
+      if (accessToken) secureStorage.setItem("authToken", accessToken);
     },
     logoutUser: (state) => {
       state.user = null;
       state.accessToken = null;
-      localStorage.removeItem("user");
-      localStorage.removeItem("access_token");
+      // Clear secure storage
+      secureStorage.clear();
     },
   },
 });

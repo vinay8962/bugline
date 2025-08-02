@@ -1,28 +1,35 @@
 import { app, PORT } from "./app.js";
 import { checkDatabaseConnection, disconnectPrisma } from "./config/prisma.js";
+import { 
+  logInfo, 
+  logError, 
+  logSystem, 
+  logSecurity 
+} from "./utils/logger.js";
 
 let server;
 
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {
-  console.log(`${signal} received, shutting down gracefully`);
+  logSystem(`Server shutdown initiated`, { signal });
   
   if (server) {
     server.close(async () => {
-      console.log("HTTP server closed");
+      logSystem("HTTP server closed");
       await disconnectPrisma();
+      logSystem("Server shutdown completed");
       process.exit(0);
     });
 
     // Force close after 10s
     setTimeout(async () => {
-      console.error("Could not close connections in time, forcefully shutting down");
+      logError("Could not close connections in time, forcefully shutting down");
       await disconnectPrisma();
       process.exit(1);
     }, 10000);
   } else {
     // No server instance (e.g., startup failure)
-    console.log("No server instance to close");
+    logSystem("No server instance to close");
     await disconnectPrisma();
     process.exit(1);
   }
@@ -31,10 +38,19 @@ const gracefulShutdown = async (signal) => {
 // Start server with database health check
 const startServer = async () => {
   try {
+    logSystem("Starting server initialization");
+    
     // Check database connection before starting server
     await checkDatabaseConnection();
     
     server = app.listen(PORT, () => {
+      logSystem("Server started successfully", {
+        port: PORT,
+        environment: process.env.NODE_ENV || "development",
+        healthCheck: `http://localhost:${PORT}/health`,
+        apiDocs: `http://localhost:${PORT}/docs`
+      });
+      
       console.log(`🚀 BugLine API Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
@@ -43,21 +59,21 @@ const startServer = async () => {
 
     // Add error handling for the server
     server.on('error', (error) => {
-      console.error("Server error:", error.message);
+      logError("Server error occurred", error);
       gracefulShutdown("SERVER_ERROR");
     });
 
     return server;
   } catch (error) {
-    console.error("Failed to start server:", error.message);
+    logError("Failed to start server", error);
     
     // Provide more specific error messages
     if (error.message.includes('Database connection failed')) {
-      console.error("❌ Database connection failed. Please check your DATABASE_URL environment variable.");
+      logError("Database connection failed. Please check your DATABASE_URL environment variable.");
     } else if (error.message.includes('EADDRINUSE')) {
-      console.error("❌ Port is already in use. Please try a different port.");
+      logError("Port is already in use. Please try a different port.");
     } else {
-      console.error("❌ Unexpected error during server startup.");
+      logError("Unexpected error during server startup.");
     }
     
     gracefulShutdown("STARTUP_ERROR");
@@ -70,14 +86,23 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error.message);
+  logError('Uncaught Exception', error);
   gracefulShutdown('UNCAUGHT_EXCEPTION');
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logError('Unhandled Rejection', { reason, promise });
   gracefulShutdown('UNHANDLED_REJECTION');
+});
+
+// Log process events
+process.on('exit', (code) => {
+  logSystem(`Process exiting with code ${code}`);
+});
+
+process.on('warning', (warning) => {
+  logError('Process warning', warning);
 });
 
 // Start the server

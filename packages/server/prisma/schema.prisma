@@ -15,6 +15,10 @@ model User {
   full_name       String
   google_id       String?       @unique
   profile_picture String?
+  phone           String?
+  bio             String?
+  location        String?
+  timezone        String?       @default("America/Los_Angeles")
   global_role     String        @default("USER")
   created_at      DateTime      @default(now())
   email_verified  Boolean       @default(false)

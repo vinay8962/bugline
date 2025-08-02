@@ -8,10 +8,22 @@ import {
   verifyUserPassword as verifyPassword,
   hashPassword 
 } from '../utils/businessHelpers.js';
+import { 
+  logInfo, 
+  logError, 
+  logDebug,
+  logDatabase, 
+  logPerformance,
+  logUserAction 
+} from '../utils/logger.js';
 
 // Authentication functions
 export const createUser = async (userData) => {
+  const startTime = Date.now();
+  
   try {
+    logInfo("Creating new user", { email: userData.email, role: userData.global_role });
+    
     validateUserData(userData);
     
     // Hash password before storing
@@ -31,16 +43,26 @@ export const createUser = async (userData) => {
       }
     });
     
+    const duration = Date.now() - startTime;
+    logPerformance("User creation", duration, { userId: user.id, email: user.email });
+    logUserAction(user.id, "user_created", { email: user.email, role: globalRole });
+    
     // Remove password from response
     const { password_hash, ...userWithoutPassword } = user;
     return userWithoutPassword;
   } catch (error) {
+    const duration = Date.now() - startTime;
+    logError("User creation failed", { error: error.message, email: userData.email, duration });
     throw handlePrismaError(error);
   }
 };
 
 export const getUserByEmail = async (email) => {
+  const startTime = Date.now();
+  
   try {
+    logInfo("Fetching user by email", { email });
+    
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -52,34 +74,55 @@ export const getUserByEmail = async (email) => {
       }
     });
     
+    const duration = Date.now() - startTime;
+    logPerformance("Get user by email", duration, { email, found: !!user });
+    
     return user;
   } catch (error) {
+    const duration = Date.now() - startTime;
+    logError("Get user by email failed", { error: error.message, email, duration });
     throw handlePrismaError(error);
   }
 };
 
 export const verifyUserPassword = async (email, password) => {
+  const startTime = Date.now();
+  
   try {
+    logInfo("Verifying user password", { email });
+    
     const user = await getUserByEmail(email);
     if (!user) {
+      logError("Password verification failed - user not found", { email });
       throw createError('User not found', 404);
     }
     
     const isValid = await verifyPassword(password, user.password_hash);
     if (!isValid) {
+      logError("Password verification failed - invalid password", { email });
       throw createError('Invalid password', 401);
     }
+    
+    const duration = Date.now() - startTime;
+    logPerformance("Password verification", duration, { email, success: true });
+    logUserAction(user.id, "password_verified", { email });
     
     const { password_hash, ...userWithoutPassword } = user;
     return userWithoutPassword;
   } catch (error) {
+    const duration = Date.now() - startTime;
+    logError("Password verification failed", { error: error.message, email, duration });
     throw handlePrismaError(error);
   }
 };
 
 // User management functions
 export const getUserById = async (userId) => {
+  const startTime = Date.now();
+  
   try {
+    logInfo("Fetching user by ID", { userId });
+    
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -92,32 +135,83 @@ export const getUserById = async (userId) => {
     });
     
     if (!user) {
+      logError("User not found by ID", { userId });
       throw createError('User not found', 404);
     }
+    
+    const duration = Date.now() - startTime;
+    logPerformance("Get user by ID", duration, { userId, found: true });
     
     const { password_hash, ...userWithoutPassword } = user;
     return userWithoutPassword;
   } catch (error) {
+    const duration = Date.now() - startTime;
+    logError("Get user by ID failed", { error: error.message, userId, duration });
     throw handlePrismaError(error);
   }
 };
 
 export const updateUser = async (userId, updateData) => {
+  const startTime = Date.now();
+  
   try {
+    logInfo("Updating user", { userId, fields: Object.keys(updateData) });
+    
+    // Validate allowed fields for profile updates
+    const allowedFields = [
+      'email', 'full_name', 'phone', 'bio', 'location', 
+      'timezone', 'profile_picture', 'global_role'
+    ];
+    
     const transformedData = {};
     
-    if (updateData.email) transformedData.email = updateData.email;
-    if (updateData.full_name) transformedData.full_name = updateData.full_name;
-    if (updateData.global_role) transformedData.global_role = updateData.global_role;
+    // Only allow updates to allowed fields
+    for (const [key, value] of Object.entries(updateData)) {
+      if (allowedFields.includes(key) && value !== undefined) {
+        transformedData[key] = value;
+      }
+    }
+    
+    // Validate email format if provided
+    if (transformedData.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(transformedData.email)) {
+        throw createError('Invalid email format', 400);
+      }
+    }
+    
+    // Validate timezone if provided
+    if (transformedData.timezone) {
+      const validTimezones = [
+        'America/Los_Angeles', 'America/Denver', 'America/Chicago', 
+        'America/New_York', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo'
+      ];
+      if (!validTimezones.includes(transformedData.timezone)) {
+        throw createError('Invalid timezone', 400);
+      }
+    }
     
     const user = await prisma.user.update({
       where: { id: userId },
-      data: transformedData
+      data: transformedData,
+      include: {
+        company_users: {
+          include: {
+            company: true
+          }
+        }
+      }
     });
+    
+    const duration = Date.now() - startTime;
+    logPerformance("User update", duration, { userId });
+    logUserAction(userId, "profile_updated", { updatedFields: Object.keys(transformedData) });
     
     const { password_hash, ...userWithoutPassword } = user;
     return userWithoutPassword;
   } catch (error) {
+    const duration = Date.now() - startTime;
+    logError("User update failed", { error: error.message, userId, duration });
     throw handlePrismaError(error);
   }
 };

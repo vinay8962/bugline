@@ -6,11 +6,9 @@ import bugRoutes from "./bugRoutes.js";
 import adminRoutes from "./adminRoutes.js";
 import authRoutes from "./authRoutes.js";
 import { checkDatabaseConnection } from "../config/prisma.js";
+import { API } from "../config/constants.js";
 
 const router = express.Router();
-
-// API version prefix
-const API_VERSION = "/api/v1";
 
 // Health check endpoint
 router.get("/health", async (req, res) => {
@@ -52,31 +50,31 @@ router.get("/docs", (req, res) => {
     endpoints: {
       health: "GET /health",
       auth: {
-        register: "POST /api/v1/auth/register",
-        login: "POST /api/v1/auth/login",
-        verifyEmail: "POST /api/v1/auth/verify-email",
-        resendVerification: "POST /api/v1/auth/resend-verification",
-        forgotPassword: "POST /api/v1/auth/forgot-password",
-        resetPassword: "POST /api/v1/auth/reset-password",
-        getCurrentUser: "GET /api/v1/auth/me"
+        register: `POST ${API.VERSION}/auth/register`,
+        login: `POST ${API.VERSION}/auth/login`,
+        verifyEmail: `POST ${API.VERSION}/auth/verify-email`,
+        resendVerification: `POST ${API.VERSION}/auth/resend-verification`,
+        forgotPassword: `POST ${API.VERSION}/auth/forgot-password`,
+        resetPassword: `POST ${API.VERSION}/auth/reset-password`,
+        getCurrentUser: `GET ${API.VERSION}/auth/me`
       },
-      users: "GET /api/v1/users",
-      companies: "GET /api/v1/companies",
-      projects: "GET /api/v1/companies/:companyId/projects",
-      bugs: "POST /api/v1/bugs (public), GET /api/v1/projects/:projectId/bugs",
-      admin: "POST /api/v1/admin/companies/:companyId/users",
+      users: `GET ${API.VERSION}/users`,
+      companies: `GET ${API.VERSION}/companies`,
+      projects: `GET ${API.VERSION}/companies/:companyId/projects`,
+      bugs: `POST ${API.VERSION}/bugs (public), GET ${API.VERSION}/projects/:projectId/bugs`,
+      admin: `POST ${API.VERSION}/admin/companies/:companyId/users`,
     },
     documentation: "https://github.com/your-repo/docs",
   });
 });
 
 // Mount route modules
-router.use(`${API_VERSION}/auth`, authRoutes);
-router.use(`${API_VERSION}/users`, userRoutes);
-router.use(`${API_VERSION}/companies`, companyRoutes);
-router.use(`${API_VERSION}`, projectRoutes); // Projects are nested under companies
-router.use(`${API_VERSION}`, bugRoutes); // Bugs are nested under projects
-router.use(`${API_VERSION}/admin`, adminRoutes);
+router.use(`${API.VERSION}/auth`, authRoutes);
+router.use(`${API.VERSION}/users`, userRoutes);
+router.use(`${API.VERSION}/companies`, companyRoutes);
+router.use(`${API.VERSION}`, projectRoutes); // Projects are nested under companies
+router.use(`${API.VERSION}`, bugRoutes); // Bugs are nested under projects
+router.use(`${API.VERSION}/admin`, adminRoutes);
 
 // 404 handler for undefined routes
 router.use("*", (req, res) => {
@@ -86,12 +84,12 @@ router.use("*", (req, res) => {
     availableRoutes: [
       "/health",
       "/docs",
-      "/api/v1/auth",
-      "/api/v1/users",
-      "/api/v1/companies",
-      "/api/v1/projects",
-      "/api/v1/bugs",
-      "/api/v1/admin",
+      `${API.VERSION}/auth`,
+      `${API.VERSION}/users`,
+      `${API.VERSION}/companies`,
+      `${API.VERSION}/projects`,
+      `${API.VERSION}/bugs`,
+      `${API.VERSION}/admin`,
     ],
   });
 });

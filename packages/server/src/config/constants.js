@@ -35,3 +35,9 @@ export const TABLES = {
     LARGE: "large",
     ENTERPRISE: "enterprise",
   };
+
+  // API configuration
+  export const API = {
+    VERSION: "/api/v1",
+    PREFIX: "/api",
+  };
