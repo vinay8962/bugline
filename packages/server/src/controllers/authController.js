@@ -10,29 +10,34 @@ import { EmailService } from "../services/emailService.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { generateToken } from "../middleware/authPrisma.js";
 import jwt from "jsonwebtoken";
+import googleAuthService from "../services/googleAuthService.js";
+import { prisma } from "../config/prisma.js";
 
 // User registration
 export const register = asyncHandler(async (req, res) => {
-  const { email, firstName, lastName, password } = req.body;
+  const { email, firstName, lastName, full_name, password } = req.body;
 
   // Create user
   const userData = {
     email,
     firstName,
     lastName,
+    full_name: full_name || `${firstName || ''} ${lastName || ''}`.trim(),
     password, // Will be hashed in the service
-    role: "USER",
-    isVerified: false
+    global_role: "USER",
+    email_verified: false // Regular users need email verification
   };
 
   const user = await createUser(userData);
 
-  // Send email verification
-  try {
-    await EmailService.sendEmailVerification(user);
-  } catch (emailError) {
-    console.error("Failed to send verification email:", emailError);
-    // Don't fail registration if email fails, but log it
+  // Send email verification only for regular users (not admin/super admin)
+  if (user.global_role === "USER") {
+    try {
+      await EmailService.sendEmailVerification(user);
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      // Don't fail registration if email fails, but log it
+    }
   }
 
   // Generate JWT token
@@ -211,6 +216,126 @@ export const resetPassword = asyncHandler(async (req, res) => {
     return res.status(400).json({
       success: false,
       message: "Invalid or expired reset token",
+    });
+  }
+});
+
+// Google OAuth Login
+export const googleLogin = asyncHandler(async (req, res) => {
+  const { idToken } = req.body;
+
+  if (!idToken) {
+    return res.status(400).json({
+      success: false,
+      message: "Google ID token is required",
+    });
+  }
+
+  console.log('🔑 Attempting Google login...');
+  console.log('🌐 Client ID configured:', process.env.GOOGLE_CLIENT_ID);
+  
+  try {
+    // Verify Google token
+    const googleUser = await googleAuthService.verifyGoogleToken(idToken);
+    
+    // Check if user exists in database
+    let user = await prisma.user.findUnique({
+      where: { email: googleUser.email }
+    });
+
+    if (user) {
+      // Existing user - check role and redirect accordingly
+      let responseData;
+      
+      if (user.global_role === 'COMPANY_ADMIN') {
+        // Create encrypted token for Company Admin
+        const { encryptedToken, iv } = googleAuthService.createEncryptedToken({
+          userId: user.id,
+          email: user.email,
+          role: user.global_role,
+          timestamp: Date.now()
+        });
+        
+        responseData = {
+          user: {
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name,
+            global_role: user.global_role,
+            is_verified: user.is_verified
+          },
+          encryptedToken,
+          iv,
+          redirectTo: 'admin'
+        };
+      } else {
+        // Developer/QA user
+        const token = generateToken(user.id);
+        
+        responseData = {
+          user: {
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name,
+            global_role: user.global_role,
+            is_verified: user.is_verified
+          },
+          token,
+          redirectTo: user.global_role === 'DEVELOPER' ? 'developer-dashboard' : 'qa-dashboard'
+        };
+      }
+      
+      return res.status(200).json({
+        success: true,
+        data: responseData,
+        message: "Login successful"
+      });
+      
+    } else {
+      // New user - Auto-create as Company Admin
+      const newUser = await prisma.user.create({
+        data: {
+          email: googleUser.email,
+          full_name: googleUser.name,
+          google_id: googleUser.googleId,
+          profile_picture: googleUser.picture,
+          global_role: 'COMPANY_ADMIN',
+          email_verified: googleUser.emailVerified,
+          is_verified: true // Company Admins are auto-verified
+        }
+      });
+      
+      // Create encrypted token for new Company Admin
+      const { encryptedToken, iv } = googleAuthService.createEncryptedToken({
+        userId: newUser.id,
+        email: newUser.email,
+        role: newUser.global_role,
+        timestamp: Date.now()
+      });
+      
+      return res.status(201).json({
+        success: true,
+        data: {
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            full_name: newUser.full_name,
+            global_role: newUser.global_role,
+            is_verified: newUser.is_verified
+          },
+          encryptedToken,
+          iv,
+          redirectTo: 'admin'
+        },
+        message: "Account created successfully as Company Admin"
+      });
+    }
+    
+  } catch (error) {
+    console.error('Google login error:', error);
+    return res.status(401).json({
+      success: false,
+      message: "Invalid Google token or authentication failed",
     });
   }
 });

@@ -2,35 +2,37 @@ generator client {
   provider = "prisma-client-js"
 }
 
- datasource db {
-    provider  = "postgresql"
-    url       = env("DATABASE_URL")
-    directUrl = env("DIRECT_URL")
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  password_hash String
-  full_name     String
-  global_role   String   @default("USER") // SUPER_ADMIN, USER
-  created_at    DateTime @default(now())
-  
-  company_users CompanyUser[]
-  assigned_bugs Bug[]     @relation("AssignedBugs")
-  
+  id              String        @id @default(uuid())
+  email           String        @unique
+  password_hash   String?
+  full_name       String
+  google_id       String?       @unique
+  profile_picture String?
+  global_role     String        @default("USER")
+  created_at      DateTime      @default(now())
+  email_verified  Boolean       @default(false)
+  is_verified     Boolean       @default(false)
+  assigned_bugs   Bug[]         @relation("AssignedBugs")
+  company_users   CompanyUser[]
+
   @@map("users")
 }
 
 model Company {
-  id         String   @id @default(uuid())
-  name       String
-  slug       String   @unique
-  created_at DateTime @default(now())
-  
+  id            String        @id @default(uuid())
+  name          String
+  slug          String        @unique
+  created_at    DateTime      @default(now())
   company_users CompanyUser[]
   projects      Project[]
-  
+
   @@map("companies")
 }
 
@@ -38,12 +40,11 @@ model CompanyUser {
   id         String   @id @default(uuid())
   user_id    String
   company_id String
-  role       String   // ADMIN, DEVELOPER, QA, OTHERS
+  role       String
   created_at DateTime @default(now())
-  
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  
+  company    Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
   @@unique([user_id, company_id])
   @@map("company_users")
 }
@@ -54,10 +55,9 @@ model Project {
   name       String
   slug       String
   created_at DateTime @default(now())
-  
-  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  bugs    Bug[]
-  
+  bugs       Bug[]
+  company    Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
   @@unique([company_id, slug])
   @@map("projects")
 }
@@ -67,14 +67,13 @@ model Bug {
   project_id     String
   title          String
   description    String
-  status         String   @default("open") // open, in_progress, resolved, closed
-  priority       String   @default("medium") // low, medium, high, critical
+  status         String   @default("open")
+  priority       String   @default("medium")
   reporter_email String?
   assigned_to    String?
   created_at     DateTime @default(now())
-  
-  project  Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  assignee User?   @relation("AssignedBugs", fields: [assigned_to], references: [id])
-  
+  assignee       User?    @relation("AssignedBugs", fields: [assigned_to], references: [id])
+  project        Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
   @@map("bugs")
 }

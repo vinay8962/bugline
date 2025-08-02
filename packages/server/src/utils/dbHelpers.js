@@ -86,12 +86,9 @@ export const validateUserData = (userData) => {
     errors.push('Password is required');
   }
   
-  if (!userData.firstName) {
-    errors.push('First name is required');
-  }
-  
-  if (!userData.lastName) {
-    errors.push('Last name is required');
+  // Check for either full_name OR firstName/lastName combination
+  if (!userData.full_name && (!userData.firstName || !userData.lastName)) {
+    errors.push('Full name is required');
   }
   
   if (errors.length > 0) {
