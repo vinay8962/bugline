@@ -1,9 +1,12 @@
 import React, { useState } from "react";
-import { Eye, EyeOff, Link } from "lucide-react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { Eye, EyeOff} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
+import { setGoogleUser } from "../features/auth/authSlice";
+import { useDispatch } from "react-redux";
 
 const Login = ({ onClick }) => {
+  const dispatch = useDispatch();
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 

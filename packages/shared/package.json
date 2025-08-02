@@ -1,0 +1,25 @@
+{
+  "name": "@bugline/shared",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./constants": "./src/constants.js",
+    "./utils": "./src/utils.js",
+    "./types": "./src/types.js"
+  },
+  "scripts": {
+    "build": "echo 'No build step required for shared utilities'",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "test": "echo 'No tests configured yet'"
+  },
+  "dependencies": {
+    "joi": "^17.11.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.30.1"
+  }
+}
