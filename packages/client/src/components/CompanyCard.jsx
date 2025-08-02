@@ -1,4 +1,4 @@
-import React from "react";
+;
 import { Building2, Users, Calendar } from "lucide-react";
 
 const CompanyCard = ({ company, role, joinDate, isPrimary = false }) => {

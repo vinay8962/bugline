@@ -26,8 +26,7 @@ class ErrorBoundary extends React.Component {
 
     // Log to console in development
     if (import.meta.env.VITE_APP_ENV === 'development') {
-      console.error('Error Boundary caught an error:', error, errorInfo);
-    }
+      }
 
     // Here you could also log to an error reporting service
     // logErrorToService(error, errorInfo);
@@ -127,8 +126,7 @@ export const useErrorHandler = () => {
     
     // Log error in development
     if (import.meta.env.VITE_APP_ENV === 'development') {
-      console.error('Handled error:', error);
-    }
+      }
   }, []);
 
   const clearError = React.useCallback(() => {

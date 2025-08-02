@@ -47,8 +47,6 @@ export const decryptUserData = async (encryptedData, iv, tag) => {
     
     return JSON.parse(decryptedText);
   } catch (error) {
-    console.error('Decryption failed:', error);
-    
     // Fallback: try to parse as plain JSON (backwards compatibility)
     try {
       return JSON.parse(encryptedData);
@@ -85,7 +83,6 @@ export const decryptAuthResponse = async (response) => {
       tag: undefined
     };
   } catch (error) {
-    console.error('Failed to decrypt auth response:', error);
     throw new Error('Authentication data could not be decrypted');
   }
 };
@@ -107,7 +104,6 @@ export const secureStorage = {
       ).toString();
       localStorage.setItem(key, encrypted);
     } catch (error) {
-      console.error('Failed to store encrypted data:', error);
       // Fallback to regular storage
       localStorage.setItem(key, JSON.stringify(data));
     }
@@ -133,7 +129,6 @@ export const secureStorage = {
         return JSON.parse(encrypted);
       }
     } catch (error) {
-      console.error('Failed to retrieve encrypted data:', error);
       return null;
     }
   },

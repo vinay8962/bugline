@@ -37,8 +37,6 @@ const baseQueryWithRetry = async (args, api, extraOptions) => {
 
   // Handle 401 Unauthorized - token expired
   if (result.error && result.error.status === 401) {
-    console.log('Token expired, logging out user...');
-    
     // Dispatch logout action to clear state
     api.dispatch({ type: 'auth/logoutUser' });
     
@@ -52,7 +50,6 @@ const baseQueryWithRetry = async (args, api, extraOptions) => {
   // Handle network errors with retry
   if (result.error && !result.error.status) {
     // Retry once for network errors
-    console.log('Network error, retrying...');
     result = await baseQueryWithAuth(args, api, extraOptions);
   }
 

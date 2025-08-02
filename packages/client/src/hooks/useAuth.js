@@ -59,7 +59,6 @@ export const useAuth = () => {
           accessToken: token || null
         }));
         
-        console.log(redirectTo)
         // Handle different user types and redirect
         if (redirectTo === 'admin') {
           // Store admin-specific encrypted data

@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Eye, EyeOff} from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../hooks/useAuth";
 
@@ -17,16 +16,14 @@ const Login = ({ onClick }) => {
     
     // Development logging only
     if (import.meta.env.VITE_APP_ENV === 'development') {
-      console.log("Google Login Success:", credentialResponse);
-    }
+      }
 
     const result = await handleGoogleLogin(credentialResponse.credential);
     
     if (!result.success) {
       setError(result.error);
       if (import.meta.env.VITE_APP_ENV === 'development') {
-        console.error('❌ Google login failed:', result.error);
-      }
+        }
     }
     
     setIsLoading(false);
@@ -35,8 +32,7 @@ const Login = ({ onClick }) => {
   const handleGoogleError = () => {
     setError('Google login failed. Please try again.');
     if (import.meta.env.VITE_APP_ENV === 'development') {
-      console.log("Google Login Failed");
-    }
+      }
   };
 
   // Handle form input changes

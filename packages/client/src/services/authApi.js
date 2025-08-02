@@ -29,7 +29,6 @@ export const authApi = apiSlice.injectEndpoints({
               data: decryptedData
             };
           } catch (error) {
-            console.error('Failed to decrypt auth response:', error);
             return response;
           }
         }
@@ -54,7 +53,6 @@ export const authApi = apiSlice.injectEndpoints({
               data: decryptedData
             };
           } catch (error) {
-            console.error('Failed to decrypt auth response:', error);
             return response;
           }
         }
@@ -79,7 +77,6 @@ export const authApi = apiSlice.injectEndpoints({
               data: decryptedData
             };
           } catch (error) {
-            console.error('Failed to decrypt auth response:', error);
             return response;
           }
         }
@@ -104,7 +101,6 @@ export const authApi = apiSlice.injectEndpoints({
               data: decryptedData
             };
           } catch (error) {
-            console.error('Failed to decrypt auth response:', error);
             return response;
           }
         }
@@ -152,7 +148,6 @@ export const authApi = apiSlice.injectEndpoints({
               data: decryptedData.user
             };
           } catch (error) {
-            console.error('Failed to decrypt user data:', error);
             return response;
           }
         }

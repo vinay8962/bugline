@@ -25,7 +25,6 @@ export const userApi = apiSlice.injectEndpoints({
               data: decryptedData.user
             };
           } catch (error) {
-            console.error('Failed to decrypt user data:', error);
             return response;
           }
         }
@@ -50,7 +49,6 @@ export const userApi = apiSlice.injectEndpoints({
               data: decryptedData.user
             };
           } catch (error) {
-            console.error('Failed to decrypt user data:', error);
             return response;
           }
         }

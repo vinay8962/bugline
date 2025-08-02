@@ -12,8 +12,7 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 if (!CLIENT_ID) {
-  console.error('VITE_GOOGLE_CLIENT_ID environment variable is required');
-}
+  }
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
