@@ -8,7 +8,7 @@ import { API_ENDPOINTS } from '@bugline/shared';
 import { secureStorage } from '../utils/encryption.js';
 
 // Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
 /**
  * Custom base query with interceptors
@@ -18,7 +18,18 @@ const baseQueryWithAuth = fetchBaseQuery({
   baseUrl: API_BASE_URL,
   prepareHeaders: (headers, { getState }) => {
     // Get token from auth state or secure storage
-    const token = getState()?.auth?.accessToken || secureStorage.getItem('authToken');
+    const stateToken = getState()?.auth?.accessToken;
+    const storageToken = secureStorage.getItem('authToken');
+    const token = stateToken || storageToken;
+    
+    // Debug logging in development
+    if (import.meta.env.VITE_APP_ENV === 'development') {
+      console.log('API prepareHeaders:', {
+        stateToken: stateToken ? 'Present' : 'Not found',
+        storageToken: storageToken ? 'Present' : 'Not found',
+        finalToken: token ? 'Using token' : 'No token available'
+      });
+    }
     
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);

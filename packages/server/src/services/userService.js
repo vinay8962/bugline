@@ -68,7 +68,14 @@ export const getUserByEmail = async (email) => {
       include: {
         company_users: {
           include: {
-            company: true
+            company: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                created_at: true
+              }
+            }
           }
         }
       }
@@ -128,7 +135,14 @@ export const getUserById = async (userId) => {
       include: {
         company_users: {
           include: {
-            company: true
+            company: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                created_at: true
+              }
+            }
           }
         }
       }
@@ -142,8 +156,22 @@ export const getUserById = async (userId) => {
     const duration = Date.now() - startTime;
     logPerformance("Get user by ID", duration, { userId, found: true });
     
-    const { password_hash, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    const { password_hash, company_users, ...userWithoutPassword } = user;
+    
+    // Transform company_users to a cleaner companies array
+    const companies = company_users.map(cu => ({
+      id: cu.company.id,
+      name: cu.company.name,
+      slug: cu.company.slug,
+      created_at: cu.company.created_at,
+      role: cu.role,
+      joined_at: cu.created_at
+    }));
+    
+    return {
+      ...userWithoutPassword,
+      companies
+    };
   } catch (error) {
     const duration = Date.now() - startTime;
     logError("Get user by ID failed", { error: error.message, userId, duration });
@@ -197,7 +225,14 @@ export const updateUser = async (userId, updateData) => {
       include: {
         company_users: {
           include: {
-            company: true
+            company: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                created_at: true
+              }
+            }
           }
         }
       }
@@ -207,8 +242,22 @@ export const updateUser = async (userId, updateData) => {
     logPerformance("User update", duration, { userId });
     logUserAction(userId, "profile_updated", { updatedFields: Object.keys(transformedData) });
     
-    const { password_hash, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    const { password_hash, company_users, ...userWithoutPassword } = user;
+    
+    // Transform company_users to a cleaner companies array
+    const companies = company_users.map(cu => ({
+      id: cu.company.id,
+      name: cu.company.name,
+      slug: cu.company.slug,
+      created_at: cu.company.created_at,
+      role: cu.role,
+      joined_at: cu.created_at
+    }));
+    
+    return {
+      ...userWithoutPassword,
+      companies
+    };
   } catch (error) {
     const duration = Date.now() - startTime;
     logError("User update failed", { error: error.message, userId, duration });
@@ -245,7 +294,14 @@ export const getAllUsers = async (page = 1, limit = 10, filters = {}) => {
         include: {
           company_users: {
             include: {
-              company: true
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  created_at: true
+                }
+              }
             }
           }
         },
@@ -254,10 +310,24 @@ export const getAllUsers = async (page = 1, limit = 10, filters = {}) => {
       prisma.user.count({ where })
     ]);
     
-    // Remove passwords from response
+    // Remove passwords and transform company data
     const usersWithoutPasswords = users.map(user => {
-      const { password_hash, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+      const { password_hash, company_users, ...userWithoutPassword } = user;
+      
+      // Transform company_users to a cleaner companies array
+      const companies = company_users.map(cu => ({
+        id: cu.company.id,
+        name: cu.company.name,
+        slug: cu.company.slug,
+        created_at: cu.company.created_at,
+        role: cu.role,
+        joined_at: cu.created_at
+      }));
+      
+      return {
+        ...userWithoutPassword,
+        companies
+      };
     });
     
     return {

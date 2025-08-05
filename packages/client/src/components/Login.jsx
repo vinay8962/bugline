@@ -3,30 +3,36 @@ import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../hooks/useAuth";
 
 const Login = ({ onClick }) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { handleGoogleLogin, handleLogin } = useAuth();
+  const { handleGoogleLogin } = useAuth();
 
   const handleGoogleSuccess = async (credentialResponse) => {
-    setIsLoading(true);
-    setError('');
-    
-    // Development logging only
-    if (import.meta.env.VITE_APP_ENV === 'development') {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      if (!credentialResponse?.credential) {
+        setError('No credential received from Google. Please try again.');
+        return;
       }
-
-    const result = await handleGoogleLogin(credentialResponse.credential);
-    
-    if (!result.success) {
-      setError(result.error);
-      if (import.meta.env.VITE_APP_ENV === 'development') {
-        }
+      
+      console.log('Google login credential received');
+      const result = await handleGoogleLogin(credentialResponse.credential);
+      
+      if (!result.success) {
+        setError(result.error || 'Google login failed. Please try again.');
+        console.error('Google login failed:', result.error);
+      } else {
+        console.log('Google login successful');
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      setError('An unexpected error occurred during Google login. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const handleGoogleError = () => {
@@ -35,35 +41,6 @@ const Login = ({ onClick }) => {
       }
   };
 
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Handle regular login form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    
-    if (!formData.email || !formData.password) {
-      setError('Please fill in all fields');
-      setIsLoading(false);
-      return;
-    }
-
-    const result = await handleLogin(formData);
-    
-    if (!result.success) {
-      setError(result.error);
-    }
-    
-    setIsLoading(false);
-  };
 
   return (
     <div className="bg-[#08080a] border-[00.01px] border-gray-800 rounded-xl p-6 space-y-6">
@@ -91,7 +68,7 @@ const Login = ({ onClick }) => {
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
-                useOneTap
+                useOneTap={false}
                 theme="filled_black"
                 size="large"
                 text="signin_with"
@@ -101,8 +78,8 @@ const Login = ({ onClick }) => {
                 type="standard"
                 context="signin"
                 ux_mode="popup"
-                auto_select="false"
-                cancel_on_tap_outside="true"
+                auto_select={false}
+                cancel_on_tap_outside={true}
                 className="google-login-button"
               />
             </div>

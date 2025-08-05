@@ -5,7 +5,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import AddEmployee from "./pages/Employee/AddEmployee";
 import Profile from "./pages/Profile";
-import PrivateRoute from "./components/Private/PrivateRoute";
+// import PrivateRoute from "./components/Private/PrivateRoute";
 import AddCompany from "./components/AddCompany";
 
 const App = () => {
@@ -17,34 +17,34 @@ const App = () => {
         <Route
           path="/dashboard"
           element={
-            <PrivateRoute>
-              <Dashboard />{" "}
-            </PrivateRoute>
+            // <PrivateRoute>
+              <Dashboard />
+            // </PrivateRoute>
           }
         />
         <Route
           path="/addemployee"
           element={
-            <PrivateRoute>
-              {" "}
+            // <PrivateRoute>
+            //   {" "}
               <AddEmployee />
-            </PrivateRoute>
+            // </PrivateRoute>
           }
         />
         <Route
           path="/add-company"
           element={
-            <PrivateRoute>
+            // <PrivateRoute>
               <AddCompany />
-            </PrivateRoute>
+            // </PrivateRoute>
           }
         />
         <Route
           path="/profile"
           element={
-            <PrivateRoute>
+            // <PrivateRoute>
               <Profile />
-            </PrivateRoute>
+            // </PrivateRoute>
           }
         />
 

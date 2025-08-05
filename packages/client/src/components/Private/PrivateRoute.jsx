@@ -7,10 +7,13 @@ const PrivateRoute = ({ children }) => {
   const user = secureStorage.getItem("user");
   const authToken = secureStorage.getItem("authToken");
   
+  console.log(user, authToken)
   // Check if user is authenticated (has both user data and token)
   const isAuthenticated = user && authToken;
+
+  console.log(isAuthenticated)
   
-  return isAuthenticated ? children : <Navigate to="/auth" />;
+  // return isAuthenticated ? children : <Navigate to="/auth" />;
 };
 
 export default PrivateRoute;

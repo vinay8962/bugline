@@ -326,7 +326,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
           const { encryptedToken, iv } = googleAuthService.createEncryptedToken(adminData);
           
           // Create secure response with admin-specific encryption
-          responseData = createSecureAuthResponse(user, null, 'admin', {
+          responseData = createSecureAuthResponse(user, null, 'dashboard', {
             encryptedToken,
             adminIV: iv,
             companyId: adminMembership.company_id
@@ -343,7 +343,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
         
         // Super admin gets full access
         const token = generateToken(user.id);
-        responseData = createSecureAuthResponse(user, token, 'super-admin-dashboard');
+        responseData = createSecureAuthResponse(user, token, 'dashboard');
       }
       
       logAuth("Google login successful", user.id, true);
@@ -387,7 +387,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
       logPerformance("Google user creation", duration, { userId: newUser.id });
       
       // Create secure encrypted response
-      const secureResponse = createSecureAuthResponse(newUser, token, 'onboarding');
+      const secureResponse = createSecureAuthResponse(newUser, token, 'dashboard');
       
       return sendSuccess(res, secureResponse, "Account created successfully. Please create or join a company to continue.", 201);
     }

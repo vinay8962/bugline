@@ -46,39 +46,52 @@ export const useAuth = () => {
    */
   const handleGoogleLogin = async (idToken) => {
     try {
+      console.log('Starting Google login with token:', idToken);
+      
       const result = await googleLoginMutation({ idToken }).unwrap();
+      console.log('Google login API response:', result);
       
       if (result.success) {
         // Decrypt the response data
         const decryptedData = await decryptAuthResponse(result.data);
-        const { user, redirectTo, token, encryptedToken, adminIV, companyId } = decryptedData;
+        console.log('Decrypted data:', decryptedData);
+        const { user, token, encryptedToken, adminIV, companyId } = decryptedData;
+        
+        // Use encryptedToken for company admins, token for regular users
+        const userToken = encryptedToken || token;
+        console.log('Using token:', userToken ? 'Token present' : 'No token found');
         
         // Update Redux state with decrypted user data
         dispatch(setGoogleUser({
           user,
-          accessToken: token || null
+          accessToken: userToken
         }));
         
-        // Handle different user types and redirect
-        if (redirectTo === 'admin') {
-          // Store admin-specific encrypted data
-          secureStorage.setItem('adminToken', encryptedToken);
-          secureStorage.setItem('adminIV', adminIV);
-          secureStorage.setItem('companyRole', 'ADMIN'); // Correct company-level role
+        // Handle user authentication and store data
+        try {
+          // Store token consistently for all user types
+          secureStorage.setItem('authToken', userToken);
+          
+          // Store role-specific data for company admins
+          if (adminIV) {
+            secureStorage.setItem('adminIV', adminIV);
+            secureStorage.setItem('companyRole', 'ADMIN');
+          }
+          
           if (companyId) {
             secureStorage.setItem('companyId', companyId);
           }
-          navigate('/admin-dashboard');
-        } else if (redirectTo === 'super-admin-dashboard') {
-          secureStorage.setItem('authToken', token);
-          secureStorage.setItem('userRole', 'SUPER_ADMIN');
-          navigate('/super-admin-dashboard');
-        } else if (redirectTo === 'onboarding') {
-          secureStorage.setItem('authToken', token);
-          navigate('/onboarding');
-        } else {
-          secureStorage.setItem('authToken', token);
+          
+          // Store user role for super admins
+          if (user.global_role === 'SUPER_ADMIN') {
+            secureStorage.setItem('userRole', 'SUPER_ADMIN');
+          }
+          
+          console.log('Navigating to dashboard');
           navigate('/dashboard');
+        } catch (navigationError) {
+          console.error('Navigation error:', navigationError);
+          // If navigation fails, still return success but log the error
         }
         
         // Store encrypted user info

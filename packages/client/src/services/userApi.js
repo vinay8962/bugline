@@ -20,6 +20,7 @@ export const userApi = apiSlice.injectEndpoints({
         if (response.success && response.data) {
           try {
             const decryptedData = await decryptAuthResponse(response.data);
+            console.log(decryptedData);
             return {
               ...response,
               data: decryptedData.user
