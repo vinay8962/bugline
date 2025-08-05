@@ -1,9 +1,12 @@
-;
 import { Building2, Users, Calendar } from "lucide-react";
 
 const CompanyCard = ({ company, role, joinDate, isPrimary = false }) => {
   return (
-    <div className={`bg-primary border border-gray-800 rounded-lg p-4 ${isPrimary ? 'ring-2 ring-blue-500' : ''}`}>
+    <div
+      className={`bg-primary border border-gray-800 rounded-lg p-4 ${
+        isPrimary ? "ring-2 ring-blue-500" : ""
+      }`}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -20,7 +23,7 @@ const CompanyCard = ({ company, role, joinDate, isPrimary = false }) => {
           </span>
         )}
       </div>
-      
+
       <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2 text-gray-400">
           <Users className="w-4 h-4" />
@@ -35,4 +38,4 @@ const CompanyCard = ({ company, role, joinDate, isPrimary = false }) => {
   );
 };
 
-export default CompanyCard; 
+export default CompanyCard;

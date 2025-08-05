@@ -20,16 +20,19 @@ const AddCompany = () => {
     }));
   };
 
+  console.log("Current form data:", formData);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       await createCompany(formData).unwrap();
       profileNotifications.companyAdded();
       // Redirect to dashboard or profile
       window.location.href = "/profile";
     } catch (error) {
-      const errorMessage = error?.data?.message || error?.message || 'Failed to create company';
+      const errorMessage =
+        error?.data?.message || error?.message || "Failed to create company";
       profileNotifications.companyAddError(errorMessage);
     }
   };
@@ -82,13 +85,19 @@ const AddCompany = () => {
               <input
                 type="text"
                 value={formData.slug}
-                onChange={(e) => handleInputChange("slug", e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                onChange={(e) =>
+                  handleInputChange(
+                    "slug",
+                    e.target.value.toLowerCase().replace(/\s+/g, "-")
+                  )
+                }
                 required
                 placeholder="company-slug"
                 className="w-full border border-gray-800 text-white px-3 py-2 rounded-md bg-gray-900 focus:border-blue-500 focus:outline-none"
               />
               <p className="text-xs text-gray-400 mt-1">
-                This will be used in your company URL. Use only letters, numbers, and hyphens.
+                This will be used in your company URL. Use only letters,
+                numbers, and hyphens.
               </p>
             </div>
 

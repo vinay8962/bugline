@@ -4,43 +4,44 @@ import { useAuth } from "../hooks/useAuth";
 
 const Login = ({ onClick }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  
+  const [error, setError] = useState("");
+
   const { handleGoogleLogin } = useAuth();
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       setIsLoading(true);
-      setError('');
-      
+      setError("");
+
       if (!credentialResponse?.credential) {
-        setError('No credential received from Google. Please try again.');
+        setError("No credential received from Google. Please try again.");
         return;
       }
-      
-      console.log('Google login credential received');
+
+      console.log("Google login credential received");
       const result = await handleGoogleLogin(credentialResponse.credential);
-      
+      console.log("Google login result:", result);
       if (!result.success) {
-        setError(result.error || 'Google login failed. Please try again.');
-        console.error('Google login failed:', result.error);
+        setError(result.error || "Google login failed. Please try again.");
+        console.error("Google login failed:", result.error);
       } else {
-        console.log('Google login successful');
+        console.log("Google login successful");
       }
     } catch (error) {
-      console.error('Google login error:', error);
-      setError('An unexpected error occurred during Google login. Please try again.');
+      console.error("Google login error:", error);
+      setError(
+        "An unexpected error occurred during Google login. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleError = () => {
-    setError('Google login failed. Please try again.');
-    if (import.meta.env.VITE_APP_ENV === 'development') {
-      }
+    setError("Google login failed. Please try again.");
+    if (import.meta.env.VITE_APP_ENV === "development") {
+    }
   };
-
 
   return (
     <div className="bg-[#08080a] border-[00.01px] border-gray-800 rounded-xl p-6 space-y-6">
