@@ -250,40 +250,34 @@ export const googleLogin = asyncHandler(async (req, res) => {
       let responseData;
       
       if (user.global_role === 'USER') {
-        // Check if user is company admin in any company
-        const adminMembership = await prisma.companyUser.findFirst({
+        // Get user's company membership (prioritize ADMIN role)
+        const companyMembership = await prisma.companyUser.findFirst({
           where: { 
-            user_id: user.id,
-            role: 'ADMIN'
+            user_id: user.id
           },
+          orderBy: [
+            { role: 'desc' }, // ADMIN comes before DEVELOPER, QA, OTHERS alphabetically
+          ],
           include: {
             company: true
           }
         });
 
-        if (adminMembership) {
-          logInfo("Google login - user is company admin", { userId: user.id, companyId: adminMembership.company_id });
+        if (companyMembership) {
+          logInfo("Google login - user with company role", { userId: user.id, companyId: companyMembership.company_id, role: companyMembership.role });
           
-          // Create regular JWT token for Company Admin (same as other users)
+          // Create JWT token for API authentication
           const token = generateToken(user.id);
           
-          // Create encrypted admin data for additional context
-          const adminData = {
-            userId: user.id,
-            email: user.email,
-            role: 'ADMIN',
-            companyId: adminMembership.company_id,
+          // Create company context to be included in encrypted user data
+          const companyContext = {
+            companyId: companyMembership.company_id,
+            companyRole: companyMembership.role, // Use actual role from database
             timestamp: Date.now()
           };
           
-          const { encryptedToken, iv } = googleAuthService.createEncryptedToken(adminData);
-          
-          // Create secure response with both JWT token and admin context
-          responseData = createSecureAuthResponse(user, token, 'dashboard', {
-            encryptedToken,
-            adminIV: iv,
-            companyId: adminMembership.company_id
-          });
+          // Create secure response with company context merged into encrypted user
+          responseData = createSecureAuthResponse(user, token, 'dashboard', companyContext);
         } else {
           logInfo("Google login - regular user", { userId: user.id });
           

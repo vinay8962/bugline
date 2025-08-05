@@ -158,21 +158,41 @@ export const encryptUserData = (userData) => {
  * @param {Object} user - User object
  * @param {string} token - JWT token
  * @param {string} redirectTo - Redirect destination
- * @param {Object} additional - Additional data
+ * @param {Object} adminContext - Admin context data (companyId, role, etc.)
  * @returns {Object} Secure response format
  */
-export const createSecureAuthResponse = (user, token, redirectTo, additional = {}) => {
-  // Encrypt user data
-  const encryptedUser = encryptUserData(user);
+export const createSecureAuthResponse = (user, token, redirectTo, adminContext = {}) => {
+  // Create comprehensive user data including admin context
+  const userData = {
+    // Basic user data
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    global_role: user.global_role,
+    email_verified: user.email_verified,
+    is_verified: user.is_verified,
+    profile_picture: user.profile_picture,
+    created_at: user.created_at,
+    
+    // Admin context if available
+    ...(adminContext.companyId && {
+      companyId: adminContext.companyId,
+      companyRole: adminContext.companyRole
+    }),
+    
+    // Include any other admin context
+    ...adminContext
+  };
+  
+  // Encrypt the combined user data
+  const encryptedUser = createEncryptedToken(userData);
   
   return {
-    // Only send the encrypted user data and metadata
     encryptedUser: encryptedUser.token,
     iv: encryptedUser.iv,
     tag: encryptedUser.tag,
-    token, // JWT is already signed/secure
-    redirectTo,
-    ...additional
+    token, // JWT for API authentication
+    redirectTo
   };
 };
 

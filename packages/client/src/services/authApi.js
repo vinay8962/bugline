@@ -37,29 +37,6 @@ export const authApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Auth'],
     }),
 
-    // User Login
-    login: builder.mutation({
-      query: (credentials) => ({
-        url: API_ENDPOINTS.AUTH.LOGIN,
-        method: 'POST',
-        body: credentials,
-      }),
-      transformResponse: async (response) => {
-        if (response.success && response.data) {
-          try {
-            const decryptedData = await decryptAuthResponse(response.data);
-            return {
-              ...response,
-              data: decryptedData
-            };
-          } catch (error) {
-            return response;
-          }
-        }
-        return response;
-      },
-      invalidatesTags: ['Auth'],
-    }),
 
     // Google OAuth Login
     googleLogin: builder.mutation({
@@ -159,11 +136,11 @@ export const authApi = apiSlice.injectEndpoints({
     // Logout (client-side action, no API call needed)
     logout: builder.mutation({
       queryFn: () => {
-        // Clear local storage
+        // Clear secure storage items
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminIV');
+        localStorage.removeItem('companyRole');
+        localStorage.removeItem('companyId');
         localStorage.removeItem('userRole');
         localStorage.removeItem('google_id_token');
         
@@ -181,7 +158,6 @@ export const authApi = apiSlice.injectEndpoints({
  */
 export const {
   useRegisterMutation,
-  useLoginMutation,
   useGoogleLoginMutation,
   useVerifyEmailMutation,
   useResendVerificationMutation,

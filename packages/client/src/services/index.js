@@ -16,7 +16,6 @@ export { projectApi } from './projectApi.js';
 // Re-export all authentication hooks
 export {
   useRegisterMutation,
-  useLoginMutation,
   useGoogleLoginMutation,
   useVerifyEmailMutation,
   useResendVerificationMutation,
