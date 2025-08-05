@@ -9,10 +9,13 @@ import {
   UserPlus} from "lucide-react";
 import BugStats from "../../components/BugStats";
 import AddEmployee from "../Employee/AddEmployee";
+import CompanyDashboard from "../../components/CompanyDashboard";
+import SuperAdminDashboard from "../../components/SuperAdminDashboard";
 import { googleLogout } from "@react-oauth/google";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logoutUser } from "../../features/auth/authSlice";
+import { useAuthStatus } from "../../hooks/useAuth";
 import useClickOutside from "../../hooks/useClickOutside";
 
 const Dashboard = () => {
@@ -24,6 +27,10 @@ const Dashboard = () => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef();
   const dispatch = useDispatch();
+  
+  // Get auth status and company information
+  const { companyId, companyRole, hasCompanyAccess, isSuperAdmin } = useAuthStatus();
+  
   // Hook usage here
   useClickOutside(menuRef, () => setOpen(false));
 
@@ -58,42 +65,6 @@ const Dashboard = () => {
     return <p className="text-center text-white">Loading stats...</p>;
   }
 
-  const mockBugs = [
-    {
-      id: "1",
-      title: "Login button not responding on mobile",
-      description: "The login button doesn't work when tapped on iOS devices",
-      priority: "High",
-      status: "Open",
-      reporter: "John Doe",
-      assignee: "Jane Smith",
-      createdAt: "2024-01-15T10:30:00Z",
-      unreadMessages: 3,
-    },
-    {
-      id: "2",
-      title: "Dashboard loading slowly",
-      description: "The main dashboard takes more than 10 seconds to load",
-      priority: "Medium",
-      status: "In Progress",
-      reporter: "Alice Johnson",
-      assignee: "Bob Wilson",
-      createdAt: "2024-01-14T14:20:00Z",
-      unreadMessages: 0,
-    },
-    {
-      id: "3",
-      title: "Error message not showing",
-      description: "When form validation fails, no error message appears",
-      priority: "Critical",
-      status: "Fixed",
-      reporter: "Mike Brown",
-      assignee: "Sarah Davis",
-      createdAt: "2024-01-13T09:15:00Z",
-      unreadMessages: 1,
-    },
-  ];
-
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "Critical":
@@ -123,14 +94,6 @@ const Dashboard = () => {
         return "bg-gray-200 text-gray-800";
     }
   };
-
-  const filteredBugs = mockBugs.filter((bug) => {
-    const matchesStatus =
-      statusFilter === "all" || bug.status.toLowerCase() === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || bug.priority.toLowerCase() === priorityFilter;
-    return matchesStatus && matchesPriority;
-  });
 
   return (
     <div className="bg-primary min-h-screen relative pb-10">
@@ -169,42 +132,35 @@ const Dashboard = () => {
                   <Settings className="h-4 w-4 text-white" />
                 </button>
                 {open && (
-                  <div className="absolute right-0 mt-2 w-56 bg-primary border border-gray-700 rounded-md shadow-lg backdrop-blur-xl z-50 overflow-visible">
-                    <ul className=" text-sm text-white">
-                      <li>
-                        <button
-                          onClick={() => setShowModal(true)}
-                          className="flex w-full items-center px-4 py-2 hover:bg-gray-800"
-                        >
-                          <UserPlus className="h-4 w-4 mr-2" /> Add Employee
-                        </button>
-                      </li>
-                      <li>
-                        <Link
-                          onClick={(e) => e.preventDefault()}
-                          className="flex items-center px-4 py-2 hover:bg-gray-800 text-white opacity-50 cursor-not-allowed"
-                        >
-                          <Plus className="h-4 w-4 mr-2" /> Add Company (Coming
-                          Soon)
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/profile"
-                          className="flex items-center px-4 py-2 hover:bg-gray-800"
-                        >
-                          <Settings className="h-4 w-4 mr-2" /> Profile
-                        </Link>
-                      </li>
-                      <li>
-                        <button
-                          onClick={logout}
-                          className="w-full flex items-center px-4 py-2 text-red-500 hover:bg-gray-800 focus:text-red-600"
-                        >
-                          <LogOut className="h-4 w-4 mr-2" /> Logout
-                        </button>
-                      </li>
-                    </ul>
+                  <div className="fixed top-16 right-4 w-56 bg-gray-800 border border-gray-600 rounded-lg shadow-2xl z-[9999] overflow-hidden">
+                    <div className="py-2">
+                      <button
+                        onClick={() => {
+                          setShowModal(true);
+                          setOpen(false);
+                        }}
+                        className="flex w-full items-center px-4 py-3 text-sm text-white hover:bg-gray-700 transition-colors"
+                      >
+                        <UserPlus className="h-4 w-4 mr-3" /> Add Employee
+                      </button>
+                      <Link
+                        to="/profile"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center px-4 py-3 text-sm text-white hover:bg-gray-700 transition-colors"
+                      >
+                        <Settings className="h-4 w-4 mr-3" /> Profile
+                      </Link>
+                      <div className="border-t border-gray-700 my-1"></div>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setOpen(false);
+                        }}
+                        className="w-full flex items-center px-4 py-3 text-sm text-red-400 hover:bg-gray-700 hover:text-red-300 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4 mr-3" /> Logout
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -213,12 +169,21 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Stats Cards */}
+      {/* Dashboard Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <BugStats stats={stats} />
+        {isSuperAdmin ? (
+          <SuperAdminDashboard />
+        ) : hasCompanyAccess && companyId ? (
+          <CompanyDashboard companyId={companyId} companyRole={companyRole} />
+        ) : (
+          <>
+            <BugStats stats={stats} />
+          </>
+        )}
       </div>
 
-      {/* Bug List Section */}
+      {/* Bug List Section - Only show if not in super admin or company dashboard mode */}
+      {!isSuperAdmin && (!hasCompanyAccess || !companyId) && (
       <div className="backdrop-blur-sm bg-primary border border-gray-800 rounded-lg mb-0 p-6 max-w-7xl mx-auto">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-white">Bug Reports</h2>
@@ -308,6 +273,7 @@ const Dashboard = () => {
           ))}
         </div>
       </div>
+      )}
 
       {/* Modal for Add Employee */}
       {showModal && (
@@ -319,7 +285,7 @@ const Dashboard = () => {
             >
               ✕
             </button>
-            <AddEmployee onClose={() => setShowModal(false)} />
+            <AddEmployee onClose={() => setShowModal(false)} companyId={companyId} />
           </div>
         </div>
       )}

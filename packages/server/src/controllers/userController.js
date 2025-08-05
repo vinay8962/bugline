@@ -138,20 +138,6 @@ export const getUserByEmail = asyncHandler(async (req, res) => {
   });
 });
 
-// Update user password
-export const updateUserPassword = asyncHandler(async (req, res) => {
-  const { userId } = req.params;
-  const { newPassword } = req.body;
-  
-  const user = await UserService.updateUserPassword(userId, newPassword);
-  
-  res.json({
-    success: true,
-    data: user,
-    message: 'Password updated successfully'
-  });
-});
-
 // Update user role (SUPER_ADMIN only)
 export const updateUserRole = asyncHandler(async (req, res) => {
   const { userId } = req.params;

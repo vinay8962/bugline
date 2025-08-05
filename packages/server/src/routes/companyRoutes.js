@@ -16,6 +16,7 @@ import {
   requireCompanyAccess,
   requireCompanyAdmin,
 } from "../middleware/auth.js";
+import { requireSuperAdmin } from "../middleware/superAdminValidator.js";
 import { validate, companySchemas } from "../middleware/validation.js";
 
 const router = express.Router();
@@ -28,8 +29,48 @@ router.use(authenticateToken);
 // Public routes (if any)
 router.get("/search", searchCompanies);
 
-// Company management routes
-router.get("/", getCompanies);
+/**
+ * @swagger
+ * tags:
+ *   - name: Companies
+ *     description: Company management operations (Super Admin only)
+ *   - name: Company Management
+ *     description: Individual company operations
+ */
+
+/**
+ * @swagger
+ * /api/v1/companies:
+ *   get:
+ *     summary: Get all companies (Super Admin only)
+ *     tags: [Companies]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Companies list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         companies:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Company'
+ *                         pagination:
+ *                           $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Super Admin required
+ */
+router.get("/", requireSuperAdmin, getCompanies);
 router.post(
   "/",
   validate(companySchemas.create),

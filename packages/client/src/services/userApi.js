@@ -135,6 +135,22 @@ export const userApi = apiSlice.injectEndpoints({
       providesTags: ['User'],
     }),
 
+    // Create Employee (User with company and role)
+    createEmployee: builder.mutation({
+      query: ({ companyId, ...employeeData }) => ({
+        url: API_ENDPOINTS.ADMIN.ADD_USER_TO_COMPANY(companyId),
+        method: 'POST',
+        body: employeeData,
+      }),
+      invalidatesTags: ['User', 'Company'],
+    }),
+
+    // Get Company Employees
+    getCompanyEmployees: builder.query({
+      query: (companyId) => API_ENDPOINTS.COMPANIES.GET_MEMBERS(companyId),
+      providesTags: ['User', 'Company'],
+    }),
+
   }),
   overrideExisting: false,
 });
@@ -156,6 +172,8 @@ export const {
   useGetUserCompaniesQuery,
   useGetUserStatsQuery,
   useGetCurrentUserStatsQuery,
+  useCreateEmployeeMutation,
+  useGetCompanyEmployeesQuery,
 } = userApi;
 
 /**

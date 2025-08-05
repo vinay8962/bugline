@@ -9,6 +9,7 @@ import "express-async-errors";
 
 import routes from "./routes/index.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { specs, swaggerUi } from "./config/swagger.js";
 import { 
   logInfo, 
   logSystem, 
@@ -99,10 +100,30 @@ app.use(requestLogger);
 // Morgan logging for HTTP requests
 app.use(morganConfig);
 
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'BugLine API Documentation',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    docExpansion: 'none',
+    filter: true,
+    showExtensions: true,
+    showCommonExtensions: true
+  }
+}));
+
+// API JSON specification endpoint
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(specs);
+});
+
 // API routes
 app.use("/", routes);
 
-logSystem("Routes configured");
+logSystem("Routes and API documentation configured");
 
 // Global error handling middleware (must be last)
 app.use(errorLogger);

@@ -27,7 +27,6 @@ export {
 
 // Re-export all user management hooks
 export {
-  useGetCurrentUserQuery,
   useUpdateCurrentUserMutation,
   useGetAllUsersQuery,
   useGetUserByIdQuery,
