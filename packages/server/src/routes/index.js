@@ -51,14 +51,16 @@ router.get("/docs", (req, res) => {
       health: "GET /health",
       auth: {
         register: `POST ${API.VERSION}/auth/register`,
-        login: `POST ${API.VERSION}/auth/login`,
+        googleLogin: `POST ${API.VERSION}/auth/google-login`,
         verifyEmail: `POST ${API.VERSION}/auth/verify-email`,
         resendVerification: `POST ${API.VERSION}/auth/resend-verification`,
         forgotPassword: `POST ${API.VERSION}/auth/forgot-password`,
-        resetPassword: `POST ${API.VERSION}/auth/reset-password`,
-        getCurrentUser: `GET ${API.VERSION}/auth/me`
+        resetPassword: `POST ${API.VERSION}/auth/reset-password`
       },
-      users: `GET ${API.VERSION}/users`,
+      users: {
+        list: `GET ${API.VERSION}/users`,
+        getCurrentUser: `GET ${API.VERSION}/users/me`
+      },
       companies: `GET ${API.VERSION}/companies`,
       projects: `GET ${API.VERSION}/companies/:companyId/projects`,
       bugs: `POST ${API.VERSION}/bugs (public), GET ${API.VERSION}/projects/:projectId/bugs`,

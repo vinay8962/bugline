@@ -1,8 +1,6 @@
 import { 
   createUser, 
   getUserByEmail, 
-  verifyUserPassword, 
-  getUserById, 
   updateUserPassword, 
   verifyUserEmail 
 } from "../services/userService.js";
@@ -12,7 +10,7 @@ import { generateToken } from "../middleware/authPrisma.js";
 import jwt from "jsonwebtoken";
 import googleAuthService from "../services/googleAuthService.js";
 import { prisma } from "../config/prisma.js";
-import { sendSuccess, sendError, createPagination } from "../utils/responseHelpers.js";
+import { sendSuccess, sendError } from "../utils/responseHelpers.js";
 import { 
   logInfo, 
   logError, 
@@ -67,55 +65,7 @@ export const register = asyncHandler(async (req, res) => {
   sendSuccess(res, secureResponse, "User registered successfully. Please check your email to verify your account.", 201);
 });
 
-// User login
-export const login = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  const { email, password } = req.body;
 
-  logInfo("User login attempt", { email, hasPassword: !!password });
-
-  // Verify user credentials using the service
-  const authenticatedUser = await verifyUserPassword(email, password);
-  if (!authenticatedUser) {
-    logSecurity("Failed login attempt", { email, ip: req.ip });
-    return sendError(res, "Invalid email or password", 401);
-  }
-
-  logAuth("User logged in", authenticatedUser.id, true);
-  logUserAction(authenticatedUser.id, "login", { ip: req.ip, userAgent: req.get("User-Agent") });
-
-  // Generate JWT token
-  const token = generateToken(authenticatedUser.id);
-
-  const duration = Date.now() - startTime;
-  logPerformance("User login", duration, { userId: authenticatedUser.id });
-
-  // Create secure encrypted response
-  const secureResponse = createSecureAuthResponse(authenticatedUser, token, 'dashboard');
-
-  sendSuccess(res, secureResponse, "Login successful");
-});
-
-// Get current user
-export const getCurrentUser = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  
-  logInfo("Get current user request", { userId: req.user.id });
-
-  const user = await getUserById(req.user.id);
-
-  const duration = Date.now() - startTime;
-  logPerformance("Get current user", duration, { userId: user.id });
-
-  // Create secure encrypted response (no token needed for current user)
-  const secureResponse = createSecureAuthResponse(user, null, null);
-
-  sendSuccess(res, {
-    encryptedUser: secureResponse.encryptedUser,
-    iv: secureResponse.iv,
-    tag: secureResponse.tag
-  }, "User data retrieved successfully");
-});
 
 // Verify email
 export const verifyEmail = asyncHandler(async (req, res) => {
@@ -314,7 +264,10 @@ export const googleLogin = asyncHandler(async (req, res) => {
         if (adminMembership) {
           logInfo("Google login - user is company admin", { userId: user.id, companyId: adminMembership.company_id });
           
-          // Create encrypted token for Company Admin with additional data
+          // Create regular JWT token for Company Admin (same as other users)
+          const token = generateToken(user.id);
+          
+          // Create encrypted admin data for additional context
           const adminData = {
             userId: user.id,
             email: user.email,
@@ -325,8 +278,8 @@ export const googleLogin = asyncHandler(async (req, res) => {
           
           const { encryptedToken, iv } = googleAuthService.createEncryptedToken(adminData);
           
-          // Create secure response with admin-specific encryption
-          responseData = createSecureAuthResponse(user, null, 'dashboard', {
+          // Create secure response with both JWT token and admin context
+          responseData = createSecureAuthResponse(user, token, 'dashboard', {
             encryptedToken,
             adminIV: iv,
             companyId: adminMembership.company_id

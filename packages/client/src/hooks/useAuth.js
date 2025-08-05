@@ -57,8 +57,8 @@ export const useAuth = () => {
         console.log('Decrypted data:', decryptedData);
         const { user, token, encryptedToken, adminIV, companyId } = decryptedData;
         
-        // Use encryptedToken for company admins, token for regular users
-        const userToken = encryptedToken || token;
+        // Always use JWT token for API calls, encryptedToken is for admin context only
+        const userToken = token;
         console.log('Using token:', userToken ? 'Token present' : 'No token found');
         
         // Update Redux state with decrypted user data

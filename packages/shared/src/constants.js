@@ -2,7 +2,6 @@
 export const API_ENDPOINTS = {
   // Authentication endpoints
   AUTH: {
-    LOGIN: '/api/v1/auth/login',
     REGISTER: '/api/v1/auth/register',
     LOGOUT: '/api/v1/auth/logout',
     GOOGLE_LOGIN: '/api/v1/auth/google-login',
@@ -10,7 +9,6 @@ export const API_ENDPOINTS = {
     RESEND_VERIFICATION: '/api/v1/auth/resend-verification',
     FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
     RESET_PASSWORD: '/api/v1/auth/reset-password',
-    GET_CURRENT_USER: '/api/v1/auth/me',
   },
   
   // User endpoints
