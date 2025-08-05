@@ -70,15 +70,17 @@ const EmployeeList = ({ companyId }) => {
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
       searchTerm === "" ||
-      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone?.includes(searchTerm);
+      usersData.user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      usersData.user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      usersData.user.phone?.includes(searchTerm);
     
     const matchesRole =
       roleFilter === "all" || user.role?.toLowerCase() === roleFilter;
     
     return matchesSearch && matchesRole;
   });
+
+  console.log('fileteredUser', filteredUsers)
 
   const handleDeleteUser = async (userId, userName) => {
     if (window.confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
@@ -173,12 +175,12 @@ const EmployeeList = ({ companyId }) => {
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
                       <span className="text-white font-semibold text-sm">
-                        {user.full_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || '?'}
+                        {user.user.full_name?.charAt(0)?.toUpperCase() || user.user.email?.charAt(0)?.toUpperCase() || '?'}
                       </span>
                     </div>
                     <div>
                       <h3 className="font-semibold text-white">
-                        {user.full_name || 'No Name'}
+                        {user.user.full_name || 'No Name'}
                       </h3>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${getRoleBadgeColor(user.role)}`}
@@ -191,9 +193,9 @@ const EmployeeList = ({ companyId }) => {
                   <div className="flex flex-col sm:flex-row gap-4 text-sm text-gray-400">
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4" />
-                      <span>{user.email}</span>
+                      <span>{user.user.email}</span>
                     </div>
-                    {user.phone && (
+                    {user.user.phone && (
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4" />
                         <span>{user.phone}</span>

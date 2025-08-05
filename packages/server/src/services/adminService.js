@@ -286,3 +286,85 @@ export const getAllCompaniesWithStats = async (page = 1, limit = 10) => {
     throw handlePrismaError(error);
   }
 };
+
+// Create user for company
+export const createUserForCompany = async (companyId, userData, createdBy) => {
+  try {
+    // Note: createdBy parameter is not currently stored in CompanyUser model
+    const { email, full_name, phone, password, role = 'OTHERS' } = userData;
+    
+    // Check if user already exists
+    let user = await prisma.user.findUnique({
+      where: { email }
+    });
+    
+    let isNewUser = false;
+    
+    if (!user) {
+      // Create new user
+      const bcrypt = await import('bcrypt');
+      const hashedPassword = await bcrypt.hash(password, 12);
+      
+      user = await prisma.user.create({
+        data: {
+          email,
+          full_name,
+          phone,
+          password_hash: hashedPassword,
+          global_role: 'USER',
+          email_verified: true // Admin-created users are verified by default
+        }
+      });
+      
+      isNewUser = true;
+    }
+    
+    // Check if user is already a member of the company
+    const existingMembership = await prisma.companyUser.findUnique({
+      where: {
+        user_id_company_id: {
+          user_id: user.id,
+          company_id: companyId
+        }
+      }
+    });
+    
+    if (existingMembership) {
+      throw createError('User is already a member of this company', 409);
+    }
+    
+    // Add user to company
+    const companyUser = await prisma.companyUser.create({
+      data: {
+        user_id: user.id,
+        company_id: companyId,
+        role
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            full_name: true,
+            phone: true,
+            created_at: true
+          }
+        },
+        company: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
+          }
+        }
+      }
+    });
+    
+    return {
+      ...companyUser,
+      isNewUser
+    };
+  } catch (error) {
+    throw handlePrismaError(error);
+  }
+};

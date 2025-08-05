@@ -135,10 +135,10 @@ export const userApi = apiSlice.injectEndpoints({
       providesTags: ['User'],
     }),
 
-    // Create Employee (User with company and role)
+    // Create Employee (User with company and role) - Using company endpoint instead of admin
     createEmployee: builder.mutation({
       query: ({ companyId, ...employeeData }) => ({
-        url: API_ENDPOINTS.ADMIN.ADD_USER_TO_COMPANY(companyId),
+        url: API_ENDPOINTS.COMPANIES.ADD_MEMBER(companyId),
         method: 'POST',
         body: employeeData,
       }),

@@ -94,11 +94,122 @@ router.delete(
   requireCompanyAdmin,
   deleteCompany
 );
+/**
+ * @swagger
+ * /api/v1/companies/{companyId}/members:
+ *   get:
+ *     summary: Get company members
+ *     tags: [Company Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: companyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Company ID
+ *     responses:
+ *       200:
+ *         description: Company members list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/CompanyUser'
+ *       403:
+ *         description: Forbidden - Company access required
+ *       404:
+ *         description: Company not found
+ */
 router.get(
   "/:companyId/members",
   requireCompanyAccess,
   getCompanyMembers
 );
+/**
+ * @swagger
+ * /api/v1/companies/{companyId}/members:
+ *   post:
+ *     summary: Add user to company or create new user
+ *     tags: [Company Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: companyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Company ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - type: object
+ *                 title: Add existing user
+ *                 required:
+ *                   - userId
+ *                 properties:
+ *                   userId:
+ *                     type: string
+ *                     format: uuid
+ *                     description: Existing user ID
+ *                   role:
+ *                     type: string
+ *                     enum: [ADMIN, DEVELOPER, QA, OTHERS]
+ *                     default: OTHERS
+ *                     description: User role in company
+ *               - type: object
+ *                 title: Create new user
+ *                 required:
+ *                   - email
+ *                   - full_name
+ *                   - password
+ *                 properties:
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     description: User email
+ *                   full_name:
+ *                     type: string
+ *                     description: User full name
+ *                   phone:
+ *                     type: string
+ *                     description: User phone number
+ *                   password:
+ *                     type: string
+ *                     minLength: 8
+ *                     description: User password
+ *                   role:
+ *                     type: string
+ *                     enum: [ADMIN, DEVELOPER, QA, OTHERS]
+ *                     default: OTHERS
+ *                     description: User role in company
+ *     responses:
+ *       201:
+ *         description: User added to company successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         description: Validation error
+ *       403:
+ *         description: Forbidden - Company admin required
+ *       404:
+ *         description: Company not found
+ */
 router.post(
   "/:companyId/members",
   requireCompanyAdmin,

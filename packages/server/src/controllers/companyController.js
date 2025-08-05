@@ -1,4 +1,5 @@
 import * as CompanyService from '../services/companyService.js';
+import * as AdminService from '../services/adminService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { sendSuccess, sendError, createPagination } from '../utils/responseHelpers.js';
 
@@ -92,15 +93,43 @@ export const getCompanyMembers = asyncHandler(async (req, res) => {
 
 export const addUserToCompany = asyncHandler(async (req, res) => {
   const { companyId } = req.params;
-  const { userId, role = 'OTHERS' } = req.body;
+  const { userId, email, full_name, phone, password, role = 'OTHERS' } = req.body;
   
-  const companyUser = await CompanyService.addUserToCompany(userId, companyId, role);
+  let result;
   
-  res.status(201).json({
-    success: true,
-    data: companyUser,
-    message: 'User added to company successfully'
-  });
+  if (userId) {
+    // Add existing user to company
+    result = await CompanyService.addUserToCompany(userId, companyId, role);
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: 'User added to company successfully'
+    });
+  } else if (email && full_name && password) {
+    // Create new user and add to company
+    const userData = {
+      email,
+      full_name,
+      phone,
+      password,
+      role
+    };
+    
+    result = await AdminService.createUserForCompany(companyId, userData, req.user.id);
+    
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: result.isNewUser 
+        ? 'User created and added to company successfully'
+        : 'Existing user added to company successfully'
+    });
+  } else {
+    return res.status(400).json({
+      success: false,
+      message: 'Either userId or (email, full_name, password) must be provided'
+    });
+  }
 });
 
 export const removeUserFromCompany = asyncHandler(async (req, res) => {

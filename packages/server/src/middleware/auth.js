@@ -1,16 +1,15 @@
-import jwt from 'jsonwebtoken';
-import { prisma } from '../config/prisma.js';
-import { asyncHandler } from './errorHandler.js';
-
+import jwt from "jsonwebtoken";
+import { prisma } from "../config/prisma.js";
+import { asyncHandler } from "./errorHandler.js";
 // Basic authentication middleware
 export const authenticateToken = asyncHandler(async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: 'Access token required'
+      message: "Access token required",
     });
   }
 
@@ -32,44 +31,42 @@ export const authenticateToken = asyncHandler(async (req, res, next) => {
               select: {
                 id: true,
                 name: true,
-                slug: true
-              }
-            }
-          }
-        }
-      }
+                slug: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid token or user not found'
+        message: "Invalid token or user not found",
       });
     }
 
     req.user = user;
     next();
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
+    if (error.name === "JsonWebTokenError") {
       return res.status(401).json({
         success: false,
-        message: 'Invalid token'
+        message: "Invalid token",
       });
     }
-    if (error.name === 'TokenExpiredError') {
+    if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
-        message: 'Token expired'
+        message: "Token expired",
       });
     }
     return res.status(500).json({
       success: false,
-      message: 'Authentication error'
+      message: "Authentication error",
     });
   }
 });
-
-
 
 // Check if user has access to company (any role)
 export const requireCompanyAccess = asyncHandler(async (req, res, next) => {
@@ -78,12 +75,12 @@ export const requireCompanyAccess = asyncHandler(async (req, res, next) => {
   if (!companyId) {
     return res.status(400).json({
       success: false,
-      message: 'Company ID is required'
+      message: "Company ID is required",
     });
   }
 
   // Super admins have access to all companies
-  if (req.user.global_role === 'SUPER_ADMIN') {
+  if (req.user.global_role === "SUPER_ADMIN") {
     return next();
   }
 
@@ -92,24 +89,24 @@ export const requireCompanyAccess = asyncHandler(async (req, res, next) => {
     where: {
       user_id_company_id: {
         user_id: req.user.id,
-        company_id: companyId
-      }
+        company_id: companyId,
+      },
     },
     include: {
       company: {
         select: {
           id: true,
           name: true,
-          slug: true
-        }
-      }
-    }
+          slug: true,
+        },
+      },
+    },
   });
 
   if (!companyUser) {
     return res.status(403).json({
       success: false,
-      message: 'Company access required'
+      message: "Company access required",
     });
   }
 
@@ -121,24 +118,26 @@ export const requireCompanyAccess = asyncHandler(async (req, res, next) => {
 export const requireCompanyRole = (requiredRoles) => {
   // Allow single role or array of roles
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-  
+
   return (req, res, next) => {
     // Super admins bypass company role checks
-    if (req.user.global_role === 'SUPER_ADMIN') {
+    if (req.user.global_role === "SUPER_ADMIN") {
       return next();
     }
-
-    if (!req.companyUser) {
+    if (!req.user.company_users.length) {
       return res.status(403).json({
         success: false,
-        message: 'Company membership required'
+        message: "Company membership required",
       });
     }
 
-    if (!roles.includes(req.companyUser.role)) {
+    console.log(
+      req.user.company_users.find((company) => roles.includes(company.role))
+    );
+    if (!req.user.company_users.find((company) => roles.includes(company.role))) {
       return res.status(403).json({
         success: false,
-        message: `Required role: ${roles.join(' or ')}`
+        message: `Required role: ${roles.join(" or ")}`,
       });
     }
 
@@ -147,45 +146,49 @@ export const requireCompanyRole = (requiredRoles) => {
 };
 
 // Check if user can manage company (ADMIN role)
-export const requireCompanyAdmin = requireCompanyRole(['ADMIN']);
+export const requireCompanyAdmin = requireCompanyRole(["ADMIN"]);
 
 // Check if user can manage bugs (ADMIN, DEVELOPER, QA)
-export const requireBugManagement = requireCompanyRole(['ADMIN', 'DEVELOPER', 'QA']);
+export const requireBugManagement = requireCompanyRole([
+  "ADMIN",
+  "DEVELOPER",
+  "QA",
+]);
 
 // Check if user can assign bugs (ADMIN, DEVELOPER)
-export const requireBugAssignment = requireCompanyRole(['ADMIN', 'DEVELOPER']);
+export const requireBugAssignment = requireCompanyRole(["ADMIN", "DEVELOPER"]);
 
 // Check if user owns the resource or has admin access
 export const requireOwnershipOrAdmin = (getUserIdFromReq) => {
   return asyncHandler(async (req, res, next) => {
     const resourceUserId = getUserIdFromReq(req);
-    
+
     // Super admins can access anything
-    if (req.user.global_role === 'SUPER_ADMIN') {
+    if (req.user.global_role === "SUPER_ADMIN") {
       return next();
     }
-    
+
     // Users can access their own resources
     if (req.user.id === resourceUserId) {
       return next();
     }
-    
+
     // Company admins can access resources of their company members
-    if (req.companyUser && req.companyUser.role === 'ADMIN') {
+    if (req.companyUser && req.companyUser.role === "ADMIN") {
       return next();
     }
-    
+
     return res.status(403).json({
       success: false,
-      message: 'Access denied: insufficient permissions'
+      message: "Access denied: insufficient permissions",
     });
   });
 };
 
 // Optional authentication (for endpoints that work with or without auth)
 export const optionalAuth = asyncHandler(async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
     req.user = null;
@@ -200,8 +203,8 @@ export const optionalAuth = asyncHandler(async (req, res, next) => {
         id: true,
         email: true,
         full_name: true,
-        global_role: true
-      }
+        global_role: true,
+      },
     });
 
     req.user = user;
