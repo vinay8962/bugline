@@ -11,8 +11,6 @@ import {
 import {
   logInfo,
   logError,
-  logDebug,
-  logDatabase,
   logPerformance,
   logUserAction,
 } from "../utils/logger.js";
@@ -100,6 +98,33 @@ export const getUserByEmail = async (email) => {
     const duration = Date.now() - startTime;
     logPerformance("Get user by email", duration, { email, found: !!user });
 
+    // Transform company_users to companies array and add convenience fields (same as getUserById)
+    if (user && user.company_users) {
+      // Transform company_users to a cleaner companies array
+      const companies = user.company_users.map((cu) => ({
+        id: cu.company.id,
+        name: cu.company.name,
+        slug: cu.company.slug,
+        created_at: cu.company.created_at,
+        role: cu.role,
+        joined_at: cu.created_at,
+      }));
+
+      // Remove company_users field and add transformed data
+      const { company_users, ...userWithoutCompanyUsers } = user;
+
+      // Add convenience fields for the primary company (first company)
+      const primaryCompany = companies[0];
+
+      return {
+        ...userWithoutCompanyUsers,
+        companies,
+        // Add these fields for backward compatibility with client-side auth logic
+        companyId: primaryCompany?.id || null,
+        companyRole: primaryCompany?.role || null,
+      };
+    }
+
     return user;
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -156,18 +181,9 @@ export const getUserById = async (userId) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        full_name: true,
-        global_role: true,
-        email_verified: true,
-        created_at: true,
-        updated_at: true,
+      include: {
         company_users: {
-          select: {
-            role: true,
-            created_at: true,
+          include: {
             company: {
               select: {
                 id: true,
@@ -202,9 +218,15 @@ export const getUserById = async (userId) => {
     // Return user without company_users field
     const { company_users, ...userWithoutCompanyUsers } = user;
 
+    // Add convenience fields for the primary company (first company)
+    const primaryCompany = companies[0];
+    
     return {
       ...userWithoutCompanyUsers,
       companies,
+      // Add these fields for backward compatibility with client-side auth logic
+      companyId: primaryCompany?.id || null,
+      companyRole: primaryCompany?.role || null,
     };
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -288,9 +310,15 @@ export const updateUser = async (userId, updateData) => {
       joined_at: cu.created_at,
     }));
 
+    // Add convenience fields for the primary company (first company)
+    const primaryCompany = companies[0];
+    
     return {
       ...userWithoutPassword,
       companies,
+      // Add these fields for backward compatibility with client-side auth logic
+      companyId: primaryCompany?.id || null,
+      companyRole: primaryCompany?.role || null,
     };
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -367,9 +395,15 @@ export const getAllUsers = async (page = 1, limit = 10, filters = {}) => {
         joined_at: cu.created_at,
       }));
 
+      // Add convenience fields for the primary company (first company)
+      const primaryCompany = companies[0];
+      
       return {
         ...userWithoutCompanyUsers,
         companies,
+        // Add these fields for backward compatibility with client-side auth logic
+        companyId: primaryCompany?.id || null,
+        companyRole: primaryCompany?.role || null,
       };
     });
 
@@ -495,6 +529,58 @@ export const getUserCompanies = async (userId) => {
       joined_at: cu.created_at,
     }));
   } catch (error) {
+    throw handlePrismaError(error);
+  }
+};
+
+// Get user with company context for auth responses
+export const getUserWithCompanyContext = async (userId) => {
+  const startTime = Date.now();
+  
+  try {
+    logInfo("Fetching user with company context", { userId });
+    
+    // Get user data
+    const user = await getUserById(userId);
+    
+    // Get company membership context (same as login flow)
+    let companyContext = {};
+    if (user.global_role === 'USER') {
+      const companyMembership = await prisma.companyUser.findFirst({
+        where: { 
+          user_id: userId
+        },
+        orderBy: [
+          { role: 'desc' }, // ADMIN comes before DEVELOPER, QA, OTHERS alphabetically
+        ],
+        include: {
+          company: true
+        }
+      });
+
+      if (companyMembership) {
+        companyContext = {
+          companyId: companyMembership.company_id,
+          companyRole: companyMembership.role,
+          timestamp: Date.now()
+        };
+      }
+    }
+    
+    const duration = Date.now() - startTime;
+    logPerformance("Get user with company context", duration, { userId });
+    
+    return {
+      user,
+      companyContext
+    };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    logError("Get user with company context failed", {
+      error: error.message,
+      userId,
+      duration,
+    });
     throw handlePrismaError(error);
   }
 };

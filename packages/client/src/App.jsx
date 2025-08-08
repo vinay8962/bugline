@@ -3,6 +3,7 @@ import Auth from "./pages/Auth/Auth";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard/Dashboard";
+import BugReport from "./pages/Dashboard/BugReport";
 import AddEmployee from "./pages/Employee/AddEmployee";
 import Profile from "./pages/Profile";
 // import PrivateRoute from "./components/Private/PrivateRoute";
@@ -44,6 +45,14 @@ const App = () => {
           element={
             // <PrivateRoute>
               <Profile />
+            // </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/bug-report"
+          element={
+            // <PrivateRoute>
+              <BugReport />
             // </PrivateRoute>
           }
         />

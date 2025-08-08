@@ -2,7 +2,6 @@ import * as UserService from "../services/userService.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { sendSuccess, sendError } from "../utils/responseHelpers.js";
 import { logInfo, logPerformance } from "../utils/logger.js";
-import { createSecureAuthResponse } from "../utils/encryption.js";
 
 // Get all users
 export const getUsers = asyncHandler(async (req, res) => {
@@ -32,16 +31,9 @@ export const getUserById = asyncHandler(async (req, res) => {
 
   const user = await UserService.getUserById(userId);
 
-  // Create secure encrypted response for user data
-  const secureResponse = createSecureAuthResponse(user, null, null);
-
   sendSuccess(
     res,
-    {
-      encryptedUser: secureResponse.encryptedUser,
-      iv: secureResponse.iv,
-      tag: secureResponse.tag,
-    },
+    user,
     "User retrieved successfully"
   );
 });
@@ -52,20 +44,20 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
 
   logInfo("Get current user request", { userId: req.user.id });
 
-  const user = await UserService.getUserById(req.user.id);
+  const userWithContext = await UserService.getUserWithCompanyContext(req.user.id);
 
   const duration = Date.now() - startTime;
-  logPerformance("Get current user", duration, { userId: user.id });
+  logPerformance("Get current user", duration, { userId: userWithContext.user.id });
 
-  // Create secure encrypted response (no token needed for current user)
-  const secureResponse = createSecureAuthResponse(user, null, null);
+  // Create plain response with company context merged into user
+  const responseData = {
+    ...userWithContext.user,
+    ...userWithContext.companyContext
+  };
 
   sendSuccess(
     res,
-    {
-      ...secureResponse,
-      success: true,
-    },
+    responseData,
     "User data retrieved successfully"
   );
 });

@@ -323,8 +323,8 @@ class BugLineWidget {
 // Create global instance
 const widget = new BugLineWidget();
 
-// Global API
-window.BugLine = {
+// Create the public API object
+const BugLineAPI = {
   init: (config) => widget.init(config),
   reportBug: (bugData) => widget.reportBug(bugData),
   show: () => widget.show(),
@@ -334,9 +334,14 @@ window.BugLine = {
   version: '1.0.0'
 };
 
-// Auto-initialize if config is available
-if (window.BugLineConfig) {
-  widget.init(window.BugLineConfig);
+// Set global API
+if (typeof window !== 'undefined') {
+  window.BugLine = BugLineAPI;
+  
+  // Auto-initialize if config is available
+  if (window.BugLineConfig) {
+    widget.init(window.BugLineConfig);
+  }
 }
 
-export default widget;
+export default BugLineAPI;

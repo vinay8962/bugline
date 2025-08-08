@@ -5,7 +5,6 @@
 
 import { apiSlice } from './api.js';
 import { API_ENDPOINTS } from '@bugline/shared';
-import { decryptAuthResponse } from '../utils/encryption.js';
 
 /**
  * User Management API endpoints
@@ -16,21 +15,6 @@ export const userApi = apiSlice.injectEndpoints({
     // Get Current User Profile
     getCurrentUser: builder.query({
       query: () => API_ENDPOINTS.USERS.ME,
-      transformResponse: async (response) => {
-        if (response.success && response.data) {
-          try {
-            const decryptedData = await decryptAuthResponse(response.data);
-            console.log(decryptedData);
-            return {
-              ...response,
-              data: decryptedData.user
-            };
-          } catch (error) {
-            return response;
-          }
-        }
-        return response;
-      },
       providesTags: ['User'],
     }),
 
@@ -41,20 +25,6 @@ export const userApi = apiSlice.injectEndpoints({
         method: 'PUT',
         body: userData,
       }),
-      transformResponse: async (response) => {
-        if (response.success && response.data) {
-          try {
-            const decryptedData = await decryptAuthResponse(response.data);
-            return {
-              ...response,
-              data: decryptedData.user
-            };
-          } catch (error) {
-            return response;
-          }
-        }
-        return response;
-      },
       invalidatesTags: ['User'],
     }),
 

@@ -3,7 +3,7 @@ import { handlePrismaError, createError } from "../utils/dbHelpers.js";
 import { generateSecureToken } from "../utils/encryption.js";
 
 // Project CRUD functions
-export const createProject = async (projectData, companyId) => {
+export const createProject = async (projectData, companyId, userId = null) => {
   try {
     const project = await prisma.project.create({
       data: {
@@ -17,6 +17,30 @@ export const createProject = async (projectData, companyId) => {
         widget_settings: projectData.widget_settings || {},
       },
     });
+
+    // If userId is provided, ensure they are a member of the company
+    if (userId) {
+      // Check if user is already a member of the company
+      const existingMembership = await prisma.companyUser.findUnique({
+        where: {
+          user_id_company_id: {
+            user_id: userId,
+            company_id: companyId,
+          },
+        },
+      });
+
+      // If not a member, add them as ADMIN (since they created a project)
+      if (!existingMembership) {
+        await prisma.companyUser.create({
+          data: {
+            user_id: userId,
+            company_id: companyId,
+            role: "ADMIN",
+          },
+        });
+      }
+    }
 
     return project;
   } catch (error) {

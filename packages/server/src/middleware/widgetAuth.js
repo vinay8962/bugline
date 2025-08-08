@@ -12,6 +12,7 @@ import { logInfo, logError, logSecurity } from '../utils/logger.js';
  */
 export const authenticateWidget = async (req, res, next) => {
   try {
+    console.log('🔍 authenticateWidget called for:', req.method, req.originalUrl);
     // Extract project token from Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

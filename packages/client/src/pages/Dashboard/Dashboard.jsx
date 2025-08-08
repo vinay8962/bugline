@@ -17,6 +17,7 @@ import { useDispatch } from "react-redux";
 import { logoutUser } from "../../features/auth/authSlice";
 import { useAuthStatus } from "../../hooks/useAuth";
 import useClickOutside from "../../hooks/useClickOutside";
+import companyApi from "../../services/companyApi";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -30,7 +31,8 @@ const Dashboard = () => {
   
   // Get auth status and company information
   const { companyId, companyRole, hasCompanyAccess, isSuperAdmin } = useAuthStatus();
-  
+  console.log(companyId, companyRole, hasCompanyAccess, isSuperAdmin);
+
   // Hook usage here
   useClickOutside(menuRef, () => setOpen(false));
 
@@ -226,51 +228,6 @@ const Dashboard = () => {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
-        </div>
-
-        {/* Bug List */}
-        <div className="space-y-4">
-          {filteredBugs.map((bug) => (
-            <div
-              key={bug.id}
-              className="border border-gray-700 rounded-lg p-4 bg-primary text-white   hover:shadow transition-shadow cursor-pointer"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <h3 className="font-semibold text-sm">{bug.title}</h3>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(
-                        bug.priority
-                      )}`}
-                    >
-                      {bug.priority}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-                        bug.status
-                      )}`}
-                    >
-                      {bug.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-2 line-clamp-2">
-                    {bug.description}
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-gray-400">
-                    <span>Reported by {bug.reporter}</span>
-                    <span>Assigned to {bug.assignee}</span>
-                    <span>{new Date(bug.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <button className="border border-gray-800 rounded px-3 py-1 text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
       )}

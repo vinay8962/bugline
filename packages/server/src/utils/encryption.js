@@ -15,7 +15,7 @@ const IV_LENGTH = 16; // 128 bits
  * @returns {Buffer} 256-bit encryption key
  */
 const getEncryptionKey = () => {
-  const secret = process.env.ENCRYPTION_SECRET || process.env.JWT_SECRET;
+  const secret = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
   if (!secret) {
     throw new Error("Encryption secret not configured");
   }

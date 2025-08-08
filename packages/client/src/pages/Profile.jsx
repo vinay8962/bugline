@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -14,7 +15,6 @@ import {
   Building2,
 } from "lucide-react";
 import {
-  useGetCurrentUserQuery,
   useGetUserByIdQuery,
   useUpdateCurrentUserMutation,
 } from "../services/userApi.js";
@@ -23,7 +23,6 @@ import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import ProfileSkeleton from "../components/ProfileSkeleton.jsx";
 import CompanyCard from "../components/CompanyCard.jsx";
 import AddFirstCompany from "../components/AddFirstCompany.jsx";
-import { useGetCompanyDetailsQuery } from "../services/companyApi.js";
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -37,42 +36,22 @@ const Profile = () => {
     profile_picture: "",
   });
 
-  // RTK Query hooks
+  // Get current user ID from Redux auth state
+  const { user: authUser } = useSelector((state) => state.auth);
+  const currentUserId = authUser?.id;
+
+  // Single API call to get all user data including companies
   const {
     data: userData,
     isLoading: isUserLoading,
     error: userError,
     refetch: refetchUser,
-  } = useGetCurrentUserQuery();
+  } = useGetUserByIdQuery(currentUserId, {
+    skip: !currentUserId, // Skip if no user ID available
+  });
 
   const [updateProfile, { isLoading: isUpdating }] =
     useUpdateCurrentUserMutation();
-
-  // Only fetch user by ID if we have the current user data
-  const currentUserId = userData?.data?.id;
-  const {
-    data: userDataById,
-    isLoading: isUserByIdLoading,
-    error: userByIdError,
-  } = useGetUserByIdQuery(currentUserId, {
-    skip: !currentUserId, // Skip this query if we don't have user ID
-  });
-
-  // Only fetch company details if we have company data
-  const firstCompanyId = userDataById?.data?.companies?.[0]?.id;
-  const {
-    data: companiesData,
-    isLoading: isCompanyLoading,
-    error: companyError,
-  } = useGetCompanyDetailsQuery(firstCompanyId, {
-    skip: !firstCompanyId, // Skip this query if we don't have company ID
-  });
-
-  // Debug logs (remove in production)
-  console.log("Current user data:", userData?.data);
-  console.log("User data by ID:", userDataById?.data);
-  console.log("First company ID:", firstCompanyId);
-  console.log("Company details:", companiesData?.data);
 
   // Initialize form data when user data is loaded
   useEffect(() => {
@@ -162,10 +141,10 @@ const Profile = () => {
   };
 
   // Determine loading state
-  const isLoading = isUserLoading || isUserByIdLoading;
+  const isLoading = isUserLoading;
 
   // Determine error state
-  const hasError = userError || userByIdError;
+  const hasError = userError;
 
   // Show loading skeleton
   if (isLoading) {
@@ -174,8 +153,7 @@ const Profile = () => {
 
   // Show error state
   if (hasError) {
-    const errorMessage =
-      userError?.message || userByIdError?.message || "Failed to load profile";
+    const errorMessage = userError?.message || "Failed to load profile";
 
     return (
       <div className="min-h-screen bg-primary p-6 md:px-20">
@@ -214,7 +192,7 @@ const Profile = () => {
   }
 
   const user = userData.data;
-  const companies = userDataById?.data?.companies || [];
+  const companies = userData.data.companies || [];
   const userDisplayName = formData.full_name || user.email || "User";
   const userRole = user.global_role || "User";
   const joinDate = user.created_at
@@ -511,14 +489,7 @@ const Profile = () => {
         <div className="flex items-center gap-2 mb-6">
           <Building2 className="w-5 h-5 text-white" />
           <h2 className="text-2xl font-bold text-white">Companies</h2>
-          {isCompanyLoading && <LoadingSpinner size="sm" className="ml-2" />}
         </div>
-
-        {companyError && (
-          <div className="bg-red-900/20 border border-red-800 text-red-400 p-4 rounded-md mb-4">
-            Failed to load company information: {companyError.message}
-          </div>
-        )}
 
         <div className="my-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

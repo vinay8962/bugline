@@ -3,6 +3,7 @@ import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "./errorHandler.js";
 // Basic authentication middleware
 export const authenticateToken = asyncHandler(async (req, res, next) => {
+  console.log('🔒 authenticateToken (JWT) called for:', req.method, req.originalUrl);
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
@@ -70,7 +71,25 @@ export const authenticateToken = asyncHandler(async (req, res, next) => {
 
 // Check if user has access to company (any role)
 export const requireCompanyAccess = asyncHandler(async (req, res, next) => {
-  const { companyId } = req.params;
+  let { companyId } = req.params;
+  const { projectId } = req.params;
+
+  // If no companyId but we have projectId, get companyId from project
+  if (!companyId && projectId) {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { company_id: true }
+    });
+    
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+    
+    companyId = project.company_id;
+  }
 
   if (!companyId) {
     return res.status(400).json({

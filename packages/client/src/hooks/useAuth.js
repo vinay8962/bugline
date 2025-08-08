@@ -3,17 +3,17 @@
  * Provides clean interface for authentication operations
  */
 
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { 
-  useGoogleLoginMutation, 
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import {
+  useGoogleLoginMutation,
   useRegisterMutation,
   useLogoutMutation,
-  useGetCurrentUserQuery 
-} from '../services/authApi.js';
-import { setGoogleUser, logoutUser } from '../features/auth/authSlice.js';
-import { authNotifications } from '../utils/notifications.jsx';
-import { decryptAuthResponse, secureStorage } from '../utils/encryption.js';
+  useGetCurrentUserQuery,
+} from "../services/authApi.js";
+import { setGoogleUser, logoutUser } from "../features/auth/authSlice.js";
+import { authNotifications } from "../utils/notifications.jsx";
+import { secureStorage } from "../utils/encryption.js";
 
 /**
  * Main authentication hook
@@ -22,20 +22,21 @@ import { decryptAuthResponse, secureStorage } from '../utils/encryption.js';
 export const useAuth = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+
   // Get auth state from Redux
   const { user, accessToken } = useSelector((state) => state.auth);
-  
+
   // RTK Query mutations
   const [googleLoginMutation] = useGoogleLoginMutation();
   const [registerMutation] = useRegisterMutation();
   const [logoutMutation] = useLogoutMutation();
-  
+
   // Current user query
-  const { data: currentUser, isLoading: isLoadingUser } = useGetCurrentUserQuery(
-    undefined,
-    { skip: !accessToken } // Skip if no token
-  );
+  const { data: currentUser, isLoading: isLoadingUser } =
+    useGetCurrentUserQuery(
+      undefined,
+      { skip: !accessToken } // Skip if no token
+    );
 
   /**
    * Google Login Handler
@@ -44,67 +45,59 @@ export const useAuth = () => {
    */
   const handleGoogleLogin = async (idToken) => {
     try {
-      console.log('Starting Google login with token:', idToken);
-      
       const result = await googleLoginMutation({ idToken }).unwrap();
-      console.log('Google login API response:', result);
-      
       if (result.success) {
-        // Decrypt the response data
-        const decryptedData = await decryptAuthResponse(result.data);
-        console.log('Decrypted data:', decryptedData);
-        const { user, token } = decryptedData;
-        
-        // Use JWT token for API calls
-        console.log('Using token:', token ? 'Token present' : 'No token found');
-        
+        // Get user and token from response data
+        const { user, token } = result.data;
+
         // Update Redux state with decrypted user data
-        dispatch(setGoogleUser({
-          user,
-          accessToken: token
-        }));
-        
+        dispatch(
+          setGoogleUser({
+            user,
+            accessToken: token,
+          })
+        );
+
         // Handle user authentication and store data
         try {
           // Store JWT token for API authentication
-          secureStorage.setItem('authToken', token);
-          
+          secureStorage.setItem("authToken", token);
+          secureStorage.setItem("userId", user.id);
+
           // Store role-specific data for company members (now included in user object)
           if (user.companyRole && user.companyId) {
-            secureStorage.setItem('companyRole', user.companyRole);
-            secureStorage.setItem('companyId', user.companyId);
+            secureStorage.setItem("companyRole", user.companyRole);
+            secureStorage.setItem("companyId", user.companyId);
           }
-          
+
           // Store user role for super admins
-          if (user.global_role === 'SUPER_ADMIN') {
-            secureStorage.setItem('userRole', 'SUPER_ADMIN');
+          if (user.global_role === "SUPER_ADMIN") {
+            secureStorage.setItem("userRole", "SUPER_ADMIN");
           }
-          
-          console.log('Navigating to dashboard');
-          navigate('/dashboard');
+
+          navigate("/dashboard");
         } catch (navigationError) {
-          console.error('Navigation error:', navigationError);
+          throw new Error("Navigation failed", navigationError);
           // If navigation fails, still return success but log the error
         }
-        
+
         // Store encrypted user info
-        secureStorage.setItem('user', user);
-        
+        secureStorage.setItem("user", user);
+
         // Show success notification
         authNotifications.loginSuccess(user.full_name || user.email);
-        
-        return { success: true, data: decryptedData };
+
+        return { success: true, data: result.data };
       }
-      
-      return { success: false, error: result.message || 'Login failed' };
-      
+
+      return { success: false, error: result.message || "Login failed" };
     } catch (error) {
-      const errorMessage = error?.data?.message || error?.message || 'Google login failed';
+      const errorMessage =
+        error?.data?.message || error?.message || "Google login failed";
       authNotifications.loginError(errorMessage);
       return { success: false, error: errorMessage };
     }
   };
-
 
   /**
    * Registration Handler
@@ -114,16 +107,16 @@ export const useAuth = () => {
   const handleRegister = async (userData) => {
     try {
       const result = await registerMutation(userData).unwrap();
-      
+
       if (result.success) {
         authNotifications.registerSuccess();
         return { success: true, data: result.data };
       }
-      
-      return { success: false, error: result.message || 'Registration failed' };
-      
+
+      return { success: false, error: result.message || "Registration failed" };
     } catch (error) {
-      const errorMessage = error?.data?.message || error?.message || 'Registration failed';
+      const errorMessage =
+        error?.data?.message || error?.message || "Registration failed";
       authNotifications.registerError(errorMessage);
       return { success: false, error: errorMessage };
     }
@@ -136,19 +129,19 @@ export const useAuth = () => {
     try {
       await logoutMutation().unwrap();
       dispatch(logoutUser());
-      
+
       // Clear all secure storage
       secureStorage.clear();
-      
+
       authNotifications.logoutSuccess();
-      navigate('/auth');
+      navigate("/auth");
       return { success: true };
     } catch (error) {
       // Even if API call fails, clear local state
       dispatch(logoutUser());
       secureStorage.clear();
       authNotifications.logoutSuccess();
-      navigate('/auth');
+      navigate("/auth");
       return { success: true };
     }
   };
@@ -173,7 +166,7 @@ export const useAuth = () => {
    * @returns {boolean}
    */
   const hasCompanyRole = (role) => {
-    const companyRole = secureStorage.getItem('companyRole');
+    const companyRole = secureStorage.getItem("companyRole");
     return companyRole === role;
   };
 
@@ -183,12 +176,12 @@ export const useAuth = () => {
    */
   const isCompanyAdmin = () => {
     // Super admins have all permissions
-    if (hasRole('SUPER_ADMIN')) {
+    if (hasRole("SUPER_ADMIN")) {
       return true;
     }
-    
+
     // Check if user has ADMIN role at company level
-    return hasCompanyRole('ADMIN');
+    return hasCompanyRole("ADMIN");
   };
 
   /**
@@ -196,9 +189,9 @@ export const useAuth = () => {
    * @returns {boolean}
    */
   const canManageBugs = () => {
-    if (hasRole('SUPER_ADMIN')) return true;
-    const companyRole = secureStorage.getItem('companyRole');
-    return ['ADMIN', 'DEVELOPER', 'QA'].includes(companyRole);
+    if (hasRole("SUPER_ADMIN")) return true;
+    const companyRole = secureStorage.getItem("companyRole");
+    return ["ADMIN", "DEVELOPER", "QA"].includes(companyRole);
   };
 
   /**
@@ -206,9 +199,9 @@ export const useAuth = () => {
    * @returns {boolean}
    */
   const canAssignBugs = () => {
-    if (hasRole('SUPER_ADMIN')) return true;
-    const companyRole = secureStorage.getItem('companyRole');
-    return ['ADMIN', 'DEVELOPER'].includes(companyRole);
+    if (hasRole("SUPER_ADMIN")) return true;
+    const companyRole = secureStorage.getItem("companyRole");
+    return ["ADMIN", "DEVELOPER"].includes(companyRole);
   };
 
   /**
@@ -216,8 +209,10 @@ export const useAuth = () => {
    * @returns {boolean}
    */
   const hasCompanyAccess = () => {
-    if (hasRole('SUPER_ADMIN')) return true;
-    return Boolean(secureStorage.getItem('companyRole') && secureStorage.getItem('companyId'));
+    if (hasRole("SUPER_ADMIN")) return true;
+    return Boolean(
+      secureStorage.getItem("companyRole") && secureStorage.getItem("companyId")
+    );
   };
 
   /**
@@ -225,18 +220,18 @@ export const useAuth = () => {
    * @returns {Object} Role information
    */
   const getRoleContext = () => {
-    const companyRole = secureStorage.getItem('companyRole');
+    const companyRole = secureStorage.getItem("companyRole");
     return {
       globalRole: user?.global_role,
       companyRole,
-      companyId: secureStorage.getItem('companyId'),
-      isSuperAdmin: hasRole('SUPER_ADMIN'),
+      companyId: secureStorage.getItem("companyId"),
+      isSuperAdmin: hasRole("SUPER_ADMIN"),
       isCompanyAdmin: isCompanyAdmin(),
-      isDeveloper: hasCompanyRole('DEVELOPER'),
-      isQA: hasCompanyRole('QA'),
+      isDeveloper: hasCompanyRole("DEVELOPER"),
+      isQA: hasCompanyRole("QA"),
       canManageBugs: canManageBugs(),
       canAssignBugs: canAssignBugs(),
-      hasCompanyAccess: hasCompanyAccess()
+      hasCompanyAccess: hasCompanyAccess(),
     };
   };
 
@@ -247,12 +242,12 @@ export const useAuth = () => {
     isAuthenticated,
     isLoadingUser,
     currentUser,
-    
+
     // Actions
     handleGoogleLogin,
     handleRegister,
     handleLogout,
-    
+
     // Utilities
     hasRole,
     hasCompanyRole,
@@ -270,7 +265,7 @@ export const useAuth = () => {
  */
 export const useGoogleAuth = () => {
   const { handleGoogleLogin } = useAuth();
-  
+
   return {
     googleLogin: handleGoogleLogin,
   };
@@ -282,21 +277,27 @@ export const useGoogleAuth = () => {
  */
 export const useAuthStatus = () => {
   const { user, accessToken } = useSelector((state) => state.auth);
-  const companyRole = secureStorage.getItem('companyRole');
-  const companyId = secureStorage.getItem('companyId');
-  
+  const companyRole = secureStorage.getItem("companyRole");
+  const companyId = secureStorage.getItem("companyId");
+
   return {
     isAuthenticated: Boolean(user && accessToken),
     user,
     globalRole: user?.global_role,
     companyRole,
     companyId,
-    isSuperAdmin: user?.global_role === 'SUPER_ADMIN',
-    isCompanyAdmin: user?.global_role === 'SUPER_ADMIN' || companyRole === 'ADMIN',
-    isDeveloper: companyRole === 'DEVELOPER',
-    isQA: companyRole === 'QA',
-    canManageBugs: user?.global_role === 'SUPER_ADMIN' || ['ADMIN', 'DEVELOPER', 'QA'].includes(companyRole),
-    canAssignBugs: user?.global_role === 'SUPER_ADMIN' || ['ADMIN', 'DEVELOPER'].includes(companyRole),
-    hasCompanyAccess: user?.global_role === 'SUPER_ADMIN' || Boolean(companyRole && companyId),
+    isSuperAdmin: user?.global_role === "SUPER_ADMIN",
+    isCompanyAdmin:
+      user?.global_role === "SUPER_ADMIN" || companyRole === "ADMIN",
+    isDeveloper: companyRole === "DEVELOPER",
+    isQA: companyRole === "QA",
+    canManageBugs:
+      user?.global_role === "SUPER_ADMIN" ||
+      ["ADMIN", "DEVELOPER", "QA"].includes(companyRole),
+    canAssignBugs:
+      user?.global_role === "SUPER_ADMIN" ||
+      ["ADMIN", "DEVELOPER"].includes(companyRole),
+    hasCompanyAccess:
+      user?.global_role === "SUPER_ADMIN" || Boolean(companyRole && companyId),
   };
 };

@@ -2,7 +2,8 @@ import {
   createUser, 
   getUserByEmail, 
   updateUserPassword, 
-  verifyUserEmail 
+  verifyUserEmail,
+  getUserWithCompanyContext 
 } from "../services/userService.js";
 import { EmailService } from "../services/emailService.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
@@ -19,7 +20,6 @@ import {
   logSecurity,
   logPerformance 
 } from "../utils/logger.js";
-import { createSecureAuthResponse } from "../utils/encryption.js";
 
 // User registration
 export const register = asyncHandler(async (req, res) => {
@@ -59,10 +59,14 @@ export const register = asyncHandler(async (req, res) => {
   const duration = Date.now() - startTime;
   logPerformance("User registration", duration, { userId: user.id });
 
-  // Create secure encrypted response for authentication
-  const secureResponse = createSecureAuthResponse(user, token, 'dashboard');
+  // Create plain response for authentication
+  const responseData = {
+    user,
+    token,
+    redirectTo: 'dashboard'
+  };
 
-  sendSuccess(res, secureResponse, "User registered successfully. Please check your email to verify your account.", 201);
+  sendSuccess(res, responseData, "User registered successfully. Please check your email to verify your account.", 201);
 });
 
 
@@ -86,13 +90,8 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     const duration = Date.now() - startTime;
     logPerformance("Email verification", duration, { userId: user.id });
 
-    // Create secure encrypted response for email verification (no token needed)
-    const secureResponse = createSecureAuthResponse(user, null, null);
-
     sendSuccess(res, {
-      encryptedUser: secureResponse.encryptedUser,
-      iv: secureResponse.iv,
-      tag: secureResponse.tag
+      user
     }, "Email verified successfully");
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -250,47 +249,41 @@ export const googleLogin = asyncHandler(async (req, res) => {
       let responseData;
       
       if (user.global_role === 'USER') {
-        // Get user's company membership (prioritize ADMIN role)
-        const companyMembership = await prisma.companyUser.findFirst({
-          where: { 
-            user_id: user.id
-          },
-          orderBy: [
-            { role: 'desc' }, // ADMIN comes before DEVELOPER, QA, OTHERS alphabetically
-          ],
-          include: {
-            company: true
-          }
-        });
-
-        if (companyMembership) {
-          logInfo("Google login - user with company role", { userId: user.id, companyId: companyMembership.company_id, role: companyMembership.role });
-          
-          // Create JWT token for API authentication
-          const token = generateToken(user.id);
-          
-          // Create company context to be included in encrypted user data
-          const companyContext = {
-            companyId: companyMembership.company_id,
-            companyRole: companyMembership.role, // Use actual role from database
-            timestamp: Date.now()
-          };
-          
-          // Create secure response with company context merged into encrypted user
-          responseData = createSecureAuthResponse(user, token, 'dashboard', companyContext);
+        // Get user with company context using service
+        const { user: enrichedUser, companyContext } = await getUserWithCompanyContext(user.id);
+        
+        if (Object.keys(companyContext).length > 0) {
+          logInfo("Google login - user with company role", { 
+            userId: user.id, 
+            companyId: companyContext.companyId, 
+            role: companyContext.companyRole 
+          });
         } else {
           logInfo("Google login - regular user", { userId: user.id });
-          
-          // Regular user with company memberships
-          const token = generateToken(user.id);
-          responseData = createSecureAuthResponse(user, token, 'dashboard');
         }
+        
+        // Create JWT token for API authentication
+        const token = generateToken(user.id);
+        
+        // Create plain response with company context merged into user
+        responseData = {
+          user: {
+            ...enrichedUser,
+            ...companyContext
+          },
+          token,
+          redirectTo: 'dashboard'
+        };
       } else if (user.global_role === 'SUPER_ADMIN') {
         logInfo("Google login - super admin", { userId: user.id });
         
         // Super admin gets full access
         const token = generateToken(user.id);
-        responseData = createSecureAuthResponse(user, token, 'dashboard');
+        responseData = {
+          user,
+          token,
+          redirectTo: 'dashboard'
+        };
       }
       
       logAuth("Google login successful", user.id, true);
@@ -333,10 +326,14 @@ export const googleLogin = asyncHandler(async (req, res) => {
       const duration = Date.now() - startTime;
       logPerformance("Google user creation", duration, { userId: newUser.id });
       
-      // Create secure encrypted response for new user
-      const secureResponse = createSecureAuthResponse(newUser, token, 'dashboard');
+      // Create plain response for new user
+      const responseData = {
+        user: newUser,
+        token,
+        redirectTo: 'dashboard'
+      };
       
-      return sendSuccess(res, secureResponse, "Account created successfully. Please create or join a company to continue.", 201);
+      return sendSuccess(res, responseData, "Account created successfully. Please create or join a company to continue.", 201);
     }
     
   } catch (error) {

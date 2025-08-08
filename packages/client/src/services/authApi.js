@@ -3,94 +3,49 @@
  * All authentication-related endpoints using RTK Query
  */
 
-import { apiSlice } from './api.js';
-import { API_ENDPOINTS } from '@bugline/shared';
-import { decryptAuthResponse } from '../utils/encryption.js';
+import { apiSlice } from "./api.js";
+import { API_ENDPOINTS } from "@bugline/shared";
 
 /**
  * Authentication API endpoints
  */
 export const authApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-
     // User Registration
     register: builder.mutation({
       query: (userData) => ({
         url: API_ENDPOINTS.AUTH.REGISTER,
-        method: 'POST',
+        method: "POST",
         body: userData,
       }),
-      transformResponse: async (response) => {
-        if (response.success && response.data) {
-          try {
-            const decryptedData = await decryptAuthResponse(response.data);
-            return {
-              ...response,
-              data: decryptedData
-            };
-          } catch (error) {
-            return response;
-          }
-        }
-        return response;
-      },
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ["Auth"],
     }),
-
 
     // Google OAuth Login
     googleLogin: builder.mutation({
       query: (tokenData) => ({
         url: API_ENDPOINTS.AUTH.GOOGLE_LOGIN,
-        method: 'POST',
+        method: "POST",
         body: tokenData,
       }),
-      transformResponse: async (response) => {
-        if (response.success && response.data) {
-          try {
-            const decryptedData = await decryptAuthResponse(response.data);
-            return {
-              ...response,
-              data: decryptedData
-            };
-          } catch (error) {
-            return response;
-          }
-        }
-        return response;
-      },
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ["Auth"],
     }),
 
     // Email Verification
     verifyEmail: builder.mutation({
       query: (verificationData) => ({
         url: API_ENDPOINTS.AUTH.VERIFY_EMAIL,
-        method: 'POST',
+        method: "POST",
         body: verificationData,
       }),
-      transformResponse: async (response) => {
-        if (response.success && response.data) {
-          try {
-            const decryptedData = await decryptAuthResponse(response.data);
-            return {
-              ...response,
-              data: decryptedData
-            };
-          } catch (error) {
-            return response;
-          }
-        }
-        return response;
-      },
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ["Auth"],
     }),
 
     // Resend Verification Email
     resendVerification: builder.mutation({
       query: (emailData) => ({
         url: API_ENDPOINTS.AUTH.RESEND_VERIFICATION,
-        method: 'POST',
+        method: "POST",
         body: emailData,
       }),
     }),
@@ -99,7 +54,7 @@ export const authApi = apiSlice.injectEndpoints({
     forgotPassword: builder.mutation({
       query: (emailData) => ({
         url: API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
-        method: 'POST',
+        method: "POST",
         body: emailData,
       }),
     }),
@@ -108,7 +63,7 @@ export const authApi = apiSlice.injectEndpoints({
     resetPassword: builder.mutation({
       query: (resetData) => ({
         url: API_ENDPOINTS.AUTH.RESET_PASSWORD,
-        method: 'POST',
+        method: "POST",
         body: resetData,
       }),
     }),
@@ -116,39 +71,24 @@ export const authApi = apiSlice.injectEndpoints({
     // Get Current User
     getCurrentUser: builder.query({
       query: () => API_ENDPOINTS.USERS.ME,
-      transformResponse: async (response) => {
-        if (response.success && response.data) {
-          try {
-            const decryptedData = await decryptAuthResponse(response.data);
-            return {
-              ...response,
-              data: decryptedData.user
-            };
-          } catch (error) {
-            return response;
-          }
-        }
-        return response;
-      },
-      providesTags: ['Auth', 'User'],
+      providesTags: ["Auth", "User"],
     }),
 
     // Logout (client-side action, no API call needed)
     logout: builder.mutation({
       queryFn: () => {
         // Clear secure storage items
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        localStorage.removeItem('companyRole');
-        localStorage.removeItem('companyId');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('google_id_token');
-        
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("user");
+        localStorage.removeItem("companyRole");
+        localStorage.removeItem("companyId");
+        localStorage.removeItem("userRole");
+        localStorage.removeItem("google_id_token");
+
         return { data: { success: true } };
       },
-      invalidatesTags: ['Auth', 'User', 'Company', 'Project', 'Bug'],
+      invalidatesTags: ["Auth", "User", "Company", "Project", "Bug"],
     }),
-
   }),
   overrideExisting: false,
 });

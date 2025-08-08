@@ -6,7 +6,7 @@ export const createProject = asyncHandler(async (req, res) => {
   const { companyId } = req.params;
   const projectData = req.body;
   
-  const project = await ProjectService.createProject(projectData, companyId);
+  const project = await ProjectService.createProject(projectData, companyId, req.user.id);
   
   res.status(201).json({
     success: true,

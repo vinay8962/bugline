@@ -13,8 +13,12 @@ export default (env, argv) => {
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: isProduction ? 'widget.min.js' : 'widget.js',
-      library: 'BugLine',
-      libraryTarget: 'umd',
+      library: {
+        name: 'BugLine',
+        type: 'umd',
+        export: 'default',
+        umdNamedDefine: true
+      },
       globalObject: 'this',
       clean: true
     },
