@@ -1,34 +1,20 @@
+import { useSelector } from "react-redux";
 
-import React from "react";
-// import { useSelector } from "react-redux"; // Uncomment if using Redux
-// import { useGetBugsQuery } from "../../redux/services/bugApi"; // Uncomment if using RTK Query
-
-const bugs = [
-  {
-    id: 1,
-    title: "Login button not working",
-    description: "The login button does not respond on click.",
-    priority: "high",
-    status: "open",
-    reporter: { full_name: "Alice" },
-    created_at: "2025-08-08T10:00:00Z",
-  },
-  {
-    id: 2,
-    title: "UI glitch on dashboard",
-    description: "Dashboard widgets overlap on mobile view.",
-    priority: "medium",
-    status: "in_progress",
-    reporter: { full_name: "Bob" },
-    created_at: "2025-08-07T14:30:00Z",
-  },
-];
-
-const BugReport = () => {
-  // const { data: bugs = [], isLoading } = useGetBugsQuery(); // Example for RTK Query
+const BugReport = (data = {}) => {
+  // Prefer bugs from props, fallback to Redux store
+  const bugsFromStore = useSelector(state => state.bug.bugs) || [];
+  // Defensive: if data is undefined or data.bugs is undefined, fallback to Redux
+  const bugs = Array.isArray(data?.bugs) ? data.bugs : bugsFromStore;
+  console.log('bugsFromStore:', bugsFromStore);
+  console.log('bugs:', bugs);
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
       <h1 className="text-2xl font-bold text-blue-600 mb-6">Bug Reports</h1>
+      {/* Debug output for bug count and IDs */}
+      <div className="mb-4 p-2 bg-gray-100 rounded text-xs text-gray-700">
+        Bug count: {bugs.length}<br />
+        Bug IDs: {bugs.map(bug => bug.id).join(", ")}
+      </div>
       <div className="space-y-4">
         {bugs.length === 0 ? (
           <div className="text-center py-12">

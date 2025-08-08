@@ -1,19 +1,28 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { FolderPlus, Bug, Plus, ArrowLeft, AlertTriangle, Clock, CheckCircle } from "lucide-react";
 import { useGetProjectDetailsQuery } from "../services/projectApi.js";
 import LoadingSpinner from "./LoadingSpinner.jsx";
+import { Link } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setBugs } from "../features/bug/bugSlice.js";
 
 const ProjectDashboard = ({ projectId, onBack }) => {
   const { data: projectDetails, isLoading, error } = useGetProjectDetailsQuery(projectId, { skip: !projectId });
-  const project = projectDetails?.data;
+  const dispatch = useDispatch();
+  const {bugs, ...project} = projectDetails?.data;
+  useEffect(() => {
+    if (bugs) {
+      dispatch(setBugs(bugs));
+    }
+  }, [bugs, dispatch]);
   if (isLoading) return <LoadingSpinner />;
   if (error) return <div className="text-center py-12 text-red-400">Failed to load project details</div>;
   const stats = {
-    total: project?.stats?.total || 0,
-    open: project?.stats?.open || 0,
-    in_progress: project?.stats?.in_progress || 0,
-    resolved: project?.stats?.resolved || 0,
-    critical: project?.stats?.critical || 0,
+    total: bugs.length || 0,
+    open: bugs.filter(bug => bug.status === "open").length || 0,
+    in_progress: bugs.filter(bug => bug.status === "in_progress").length || 0,
+    resolved: bugs.filter(bug => bug.status === "resolved").length || 0,
+    critical: bugs.filter(bug => bug.priority === "critical").length || 0,
   };
   return (
     <div className="bg-primary min-h-screen relative pb-10">
@@ -114,10 +123,13 @@ const ProjectDashboard = ({ projectId, onBack }) => {
 
         {/* Bug Report Navigation Button */}
         <div className="flex justify-center mt-8">
-          <a href="/dashboard/bug-report" className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+          <Link
+            to="/dashboard/bug-report"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
             <Bug className="w-5 h-5" />
             Go to Bug Reports
-          </a>
+          </Link>
         </div>
       </div>
     </div>

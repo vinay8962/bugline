@@ -71,6 +71,7 @@
     </style>
   </head>
   <body>
+    <div id="bugline-widget-root"></div>
     <h1>🐛 BugLine Widget Test Page</h1>
     <p>This page is used to test the BugLine widget functionality.</p>
 
@@ -98,7 +99,7 @@
         Click the floating button in the bottom-right corner or use the button
         below:
       </p>
-      <button class="test-button" onclick="BugLine.show()">
+      <button class="test-button" onclick="openBugModal()">
         Show Bug Report Modal
       </button>
       <button class="test-button" onclick="testManualReport()">
@@ -154,21 +155,30 @@
     <!-- Load the widget -->
     <script src="./dist/widget.min.js"></script>
     <script>
-      console.log('Script loaded, checking BugLine:', typeof window.BugLine);
-      console.log('BugLine object:', window.BugLine);
-      
+      // Robust modal opener
+      function openBugModal() {
+        if (window.BugLine && typeof BugLine.show === "function") {
+          BugLine.show();
+        } else {
+          updateStatus("❌ Widget not initialized", "error");
+        }
+      }
+      console.log("Script loaded, checking BugLine:", typeof window.BugLine);
+      console.log("BugLine object:", window.BugLine);
+
       // Fix for module loading issue - access the default export if needed
       if (window.BugLine && window.BugLine.default && !window.BugLine.init) {
         window.BugLine = window.BugLine.default;
-        console.log('Fixed BugLine to use default export:', window.BugLine);
+        console.log("Fixed BugLine to use default export:", window.BugLine);
       }
-      
+
       // Initialize widget with test configuration
       window.BugLineConfig = {
         projectToken: "37e7caee5e912666a4f63ec416348f8a", // Valid project token
         position: "bottom-right",
         autoErrorCapture: true,
         apiUrl: "http://localhost:5001/api/v1", // Point to local backend
+        mountSelector: "#bugline-widget-root", // Specify widget container
         onLoad: () => {
           console.log("✅ BugLine widget loaded successfully");
           updateStatus("✅ Widget loaded and ready!", "success");
@@ -183,7 +193,10 @@
         onError: (error) => {
           console.error("❌ Widget error:", error);
           if (error.message.includes("Invalid project token")) {
-            updateStatus(`⚠️ Token validation failed - check if project token '37e7caee5e912666a4f63ec416348f8a' exists in database`, "error");
+            updateStatus(
+              `⚠️ Token validation failed - check if project token '37e7caee5e912666a4f63ec416348f8a' exists in database`,
+              "error"
+            );
           } else {
             updateStatus(`❌ Widget error: ${error.message}`, "error");
           }

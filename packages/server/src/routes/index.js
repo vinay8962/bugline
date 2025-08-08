@@ -1,7 +1,6 @@
 import express from "express";
 import userRoutes from "./userRoutes.js";
 import companyRoutes from "./companyRoutes.js";
-import projectRoutes from "./projectRoutes.js";
 import bugRoutes from "./bugRoutes.js";
 import adminRoutes from "./adminRoutes.js";
 import authRoutes from "./authRoutes.js";
@@ -16,7 +15,7 @@ router.get("/health", async (req, res) => {
   try {
     // Check database connection
     await checkDatabaseConnection();
-    
+
     res.status(200).json({
       success: true,
       message: "BugLine API is running",
@@ -24,8 +23,8 @@ router.get("/health", async (req, res) => {
       version: "1.0.0",
       services: {
         database: "connected",
-        api: "running"
-      }
+        api: "running",
+      },
     });
   } catch (error) {
     res.status(503).json({
@@ -35,9 +34,9 @@ router.get("/health", async (req, res) => {
       version: "1.0.0",
       services: {
         database: "disconnected",
-        api: "running"
+        api: "running",
       },
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -56,17 +55,17 @@ router.get("/docs", (req, res) => {
         verifyEmail: `POST ${API.VERSION}/auth/verify-email`,
         resendVerification: `POST ${API.VERSION}/auth/resend-verification`,
         forgotPassword: `POST ${API.VERSION}/auth/forgot-password`,
-        resetPassword: `POST ${API.VERSION}/auth/reset-password`
+        resetPassword: `POST ${API.VERSION}/auth/reset-password`,
       },
       users: {
         list: `GET ${API.VERSION}/users`,
-        getCurrentUser: `GET ${API.VERSION}/users/me`
+        getCurrentUser: `GET ${API.VERSION}/users/me`,
       },
       companies: `GET ${API.VERSION}/companies`,
       projects: `GET ${API.VERSION}/companies/:companyId/projects`,
       bugs: `POST ${API.VERSION}/bugs (public), GET ${API.VERSION}/projects/:projectId/bugs`,
       admin: `POST ${API.VERSION}/admin/companies/:companyId/users`,
-      widgets: `GET ${API.VERSION}/widgets/validate, POST ${API.VERSION}/widgets/bugs/report`
+      widgets: `GET ${API.VERSION}/widgets/validate, POST ${API.VERSION}/widgets/bugs/report`,
     },
     documentation: "https://github.com/your-repo/docs",
   });
@@ -76,10 +75,9 @@ router.get("/docs", (req, res) => {
 router.use(`${API.VERSION}/auth`, authRoutes);
 router.use(`${API.VERSION}/users`, userRoutes);
 router.use(`${API.VERSION}/companies`, companyRoutes);
-router.use(`${API.VERSION}`, projectRoutes); // Projects are nested under companies
-router.use(`${API.VERSION}`, bugRoutes); // Bugs are nested under projects
+router.use(`${API.VERSION}/bugs`, bugRoutes); // Bugs are nested under projects
 router.use(`${API.VERSION}/admin`, adminRoutes);
-router.use(`${API.VERSION}`, widgetRoutes); // Widget routes
+router.use(`${API.VERSION}/widgets`, widgetRoutes); // Widget routes
 
 // 404 handler for undefined routes
 router.use("*", (req, res) => {

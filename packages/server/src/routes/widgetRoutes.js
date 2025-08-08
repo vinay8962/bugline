@@ -21,17 +21,17 @@ import { authenticateToken } from "../middleware/auth.js";
 const router = express.Router();
 
 // Public widget routes (authenticated with project token)
-router.use("/widgets", authenticateWidget);
+router.use("/", authenticateWidget);
 
 // Widget token validation
-router.get("/widgets/validate", validateProjectToken);
+router.get("/validate", authenticateWidget, validateProjectToken);
 
 // Widget configuration
-router.get("/widgets/config", getWidgetConfig);
+router.get("/config", getWidgetConfig);
 
 // Bug reporting from widget
 router.post(
-  "/widgets/bugs/report",
+  "/bugs/report",
   validateWidgetConfig,
   sanitizeWidgetData,
   reportBug
@@ -40,13 +40,13 @@ router.post(
 // Internal widget management routes (require user authentication)
 router.put(
   "/projects/:projectId/widget/settings",
-  // authenticateToken,
+  authenticateToken,
   updateWidgetSettings
 );
 
 router.get(
   "/projects/:projectId/widget/stats",
-  // authenticateToken,
+  authenticateToken,
   getWidgetStats
 );
 

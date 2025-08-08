@@ -9,8 +9,16 @@ import {
   getCompanyMembers,
   addUserToCompany,
   removeUserFromCompany,
-  updateUserCompanyRole
+  updateUserCompanyRole,
 } from "../controllers/companyController.js";
+import {
+  createProject,
+  getCompanyProjects,
+  searchProjects,
+  getProject,
+  updateProject,
+  deleteProject,
+} from "../controllers/projectController.js";
 import {
   authenticateToken,
   requireCompanyAccess,
@@ -20,8 +28,6 @@ import { requireSuperAdmin } from "../middleware/superAdminValidator.js";
 import { validate, companySchemas } from "../middleware/validation.js";
 
 const router = express.Router();
-
-
 
 // Protected routes - require authentication
 router.use(authenticateToken);
@@ -71,29 +77,17 @@ router.get("/search", searchCompanies);
  *         description: Forbidden - Super Admin required
  */
 router.get("/", requireSuperAdmin, getCompanies);
-router.post(
-  "/",
-  validate(companySchemas.create),
-  createCompany
-);
+router.post("/", validate(companySchemas.create), createCompany);
 
 // Company-specific routes
-router.get(
-  "/:companyId",
-  requireCompanyAccess,
-  getCompany
-);
+router.get("/:companyId", requireCompanyAccess, getCompany);
 router.put(
   "/:companyId",
   requireCompanyAdmin,
   validate(companySchemas.update),
   updateCompany
 );
-router.delete(
-  "/:companyId",
-  requireCompanyAdmin,
-  deleteCompany
-);
+router.delete("/:companyId", requireCompanyAdmin, deleteCompany);
 /**
  * @swagger
  * /api/v1/companies/{companyId}/members:
@@ -129,11 +123,7 @@ router.delete(
  *       404:
  *         description: Company not found
  */
-router.get(
-  "/:companyId/members",
-  requireCompanyAccess,
-  getCompanyMembers
-);
+router.get("/:companyId/members", requireCompanyAccess, getCompanyMembers);
 /**
  * @swagger
  * /api/v1/companies/{companyId}/members:
@@ -210,11 +200,7 @@ router.get(
  *       404:
  *         description: Company not found
  */
-router.post(
-  "/:companyId/members",
-  requireCompanyAdmin,
-  addUserToCompany
-);
+router.post("/:companyId/members", requireCompanyAdmin, addUserToCompany);
 router.delete(
   "/:companyId/members/:userId",
   requireCompanyAdmin,
@@ -225,5 +211,12 @@ router.put(
   requireCompanyAdmin,
   updateUserCompanyRole
 );
+
+router.post("/:companyId/projects", requireCompanyAdmin, createProject);
+router.get("/:companyId/projects", requireCompanyAccess, getCompanyProjects);
+router.get("/:companyId/projects/search", requireCompanyAccess, searchProjects);
+router.get("/projects/:projectId", requireCompanyAccess, getProject);
+router.put("/projects/:projectId", requireCompanyAdmin, updateProject);
+router.delete("/projects/:projectId", requireCompanyAdmin, deleteProject);
 
 export default router;

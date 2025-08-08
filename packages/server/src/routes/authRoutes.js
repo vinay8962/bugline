@@ -5,9 +5,8 @@ import {
   resendVerification,
   forgotPassword,
   resetPassword,
-  googleLogin
+  googleLogin,
 } from "../controllers/authController.js";
-import { authenticateToken } from "../middleware/auth.js";
 import { validate, authSchemas } from "../middleware/validation.js";
 
 const router = express.Router();
@@ -166,7 +165,11 @@ router.post("/verify-email", validate(authSchemas.verifyEmail), verifyEmail);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/resend-verification", validate(authSchemas.resendVerification), resendVerification);
+router.post(
+  "/resend-verification",
+  validate(authSchemas.resendVerification),
+  resendVerification
+);
 
 /**
  * @swagger
@@ -202,7 +205,11 @@ router.post("/resend-verification", validate(authSchemas.resendVerification), re
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/forgot-password", validate(authSchemas.forgotPassword), forgotPassword);
+router.post(
+  "/forgot-password",
+  validate(authSchemas.forgotPassword),
+  forgotPassword
+);
 
 /**
  * @swagger
@@ -243,7 +250,11 @@ router.post("/forgot-password", validate(authSchemas.forgotPassword), forgotPass
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/reset-password", validate(authSchemas.resetPassword), resetPassword);
+router.post(
+  "/reset-password",
+  validate(authSchemas.resetPassword),
+  resetPassword
+);
 
 // Protected routes
 // Current user endpoint moved to /api/v1/users/me
