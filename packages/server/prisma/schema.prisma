@@ -54,13 +54,17 @@ model CompanyUser {
 }
 
 model Project {
-  id         String   @id @default(uuid())
-  company_id String
-  name       String
-  slug       String
-  created_at DateTime @default(now())
-  bugs       Bug[]
-  company    Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  company_id      String
+  name            String
+  slug            String
+  project_token   String?  @unique
+  allowed_domains Json?    @default("[]")
+  widget_settings Json?    @default("{}")
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
+  bugs            Bug[]
+  company         Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
 
   @@unique([company_id, slug])
   @@map("projects")
@@ -75,7 +79,11 @@ model Bug {
   priority       String   @default("medium")
   reporter_email String?
   assigned_to    String?
+  error_details  Json?    // Stack trace, error type, filename, line number for widget bugs
+  environment    Json?    // User agent, URL, browser info for widget bugs
+  source         String   @default("manual") // manual, widget, api
   created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt
   assignee       User?    @relation("AssignedBugs", fields: [assigned_to], references: [id])
   project        Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
 

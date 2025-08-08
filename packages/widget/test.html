@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BugLine Widget Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 40px;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .code-block {
+            background: #f1f3f4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐛 BugLine Widget Test Page</h1>
+    <p>This page is used to test the BugLine widget functionality.</p>
+
+    <div class="test-section">
+        <h2>Widget Configuration</h2>
+        <div class="code-block">
+BugLine.init({
+    projectToken: 'test-project-token',
+    position: 'bottom-right',
+    autoErrorCapture: true,
+    onBugReported: (result) => {
+        console.log('Bug reported:', result);
+        document.getElementById('status').innerHTML = 
+            `<div class="success">✅ Bug reported successfully! ID: ${result.bugId}</div>`;
+    },
+    onError: (error) => {
+        console.error('Widget error:', error);
+        document.getElementById('status').innerHTML = 
+            `<div class="error">❌ Widget error: ${error.message}</div>`;
+    }
+});
+        </div>
+        <div id="status" class="status info">Widget initializing...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Bug Reporting</h2>
+        <p>Click the floating button in the bottom-right corner or use the button below:</p>
+        <button class="test-button" onclick="BugLine.show()">Show Bug Report Modal</button>
+        <button class="test-button" onclick="testManualReport()">Report Test Bug</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Error Testing</h2>
+        <p>Test automatic error capture by triggering JavaScript errors:</p>
+        <button class="test-button" onclick="triggerError()">Trigger Reference Error</button>
+        <button class="test-button" onclick="triggerTypeError()">Trigger Type Error</button>
+        <button class="test-button" onclick="triggerPromiseRejection()">Trigger Promise Rejection</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Widget Controls</h2>
+        <button class="test-button" onclick="BugLine.show()">Show Widget</button>
+        <button class="test-button" onclick="BugLine.hide()">Hide Widget</button>
+        <button class="test-button" onclick="BugLine.showWidget()">Show Button</button>
+        <button class="test-button" onclick="toggleWidget()">Toggle Widget</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <p>Check the browser console for detailed widget logs and debug information.</p>
+        <div id="console-output" style="background: #000; color: #0f0; padding: 15px; font-family: monospace; height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <!-- Load the widget -->
+    <script src="./dist/widget.js"></script>
+    <script>
+        // Initialize widget with test configuration
+        window.BugLineConfig = {
+            projectToken: 'test-project-token-12345', // Use a test token
+            position: 'bottom-right',
+            autoErrorCapture: true,
+            apiUrl: 'http://localhost:3000/api/v1', // Point to local backend
+            onLoad: () => {
+                console.log('✅ BugLine widget loaded successfully');
+                updateStatus('✅ Widget loaded and ready!', 'success');
+            },
+            onBugReported: (result) => {
+                console.log('🐛 Bug reported:', result);
+                updateStatus(`✅ Bug reported successfully! ID: ${result.bugId}`, 'success');
+            },
+            onError: (error) => {
+                console.error('❌ Widget error:', error);
+                updateStatus(`❌ Widget error: ${error.message}`, 'error');
+            }
+        };
+
+        // Initialize the widget
+        if (window.BugLine) {
+            BugLine.init(window.BugLineConfig);
+        }
+
+        // Helper functions
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        function testManualReport() {
+            if (window.BugLine) {
+                BugLine.reportBug({
+                    title: 'Test Bug Report',
+                    description: 'This is a test bug report generated from the test page.',
+                    priority: 'medium',
+                    reporter_email: 'test@example.com'
+                });
+            }
+        }
+
+        function triggerError() {
+            // This will trigger a ReferenceError
+            nonExistentFunction();
+        }
+
+        function triggerTypeError() {
+            // This will trigger a TypeError
+            const obj = null;
+            obj.someMethod();
+        }
+
+        function triggerPromiseRejection() {
+            // This will trigger an unhandled promise rejection
+            Promise.reject(new Error('Test promise rejection'));
+        }
+
+        let widgetVisible = true;
+        function toggleWidget() {
+            if (window.BugLine) {
+                if (widgetVisible) {
+                    BugLine.hide();
+                    widgetVisible = false;
+                } else {
+                    BugLine.showWidget();
+                    widgetVisible = true;
+                }
+            }
+        }
+
+        // Capture console output for display
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+
+        function addToConsoleOutput(message, type = 'log') {
+            const consoleEl = document.getElementById('console-output');
+            const timestamp = new Date().toISOString().substr(11, 8);
+            const color = type === 'error' ? '#f00' : type === 'warn' ? '#ff0' : '#0f0';
+            
+            consoleEl.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            addToConsoleOutput(args.join(' '), 'log');
+        };
+
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            addToConsoleOutput(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            addToConsoleOutput(args.join(' '), 'warn');
+        };
+
+        // Test widget availability
+        window.addEventListener('load', () => {
+            if (typeof BugLine !== 'undefined') {
+                console.log('✅ BugLine global object available');
+                console.log('📋 BugLine version:', BugLine.version);
+            } else {
+                console.error('❌ BugLine global object not found');
+                updateStatus('❌ Widget failed to load', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

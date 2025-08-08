@@ -1,204 +1,178 @@
 import * as AdminService from "../services/adminService.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import { sendSuccess, sendError } from "../utils/responseHelpers.js";
 
-export class AdminController {
-  // Create user and assign to company
-  static createUserForCompany = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-    const userData = req.body;
-    const createdBy = req.user.id;
+// Create user and assign to company
+export const createUserForCompany = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const userData = req.body;
+  const createdBy = req.user.id;
 
-    const result = await AdminService.createUserForCompany(
-      companyId,
-      userData,
-      createdBy
-    );
+  const result = await AdminService.createUserForCompany(
+    companyId,
+    userData,
+    createdBy
+  );
 
-    res.status(201).json({
-      success: true,
-      data: result,
-      message: result.isNewUser 
-        ? "User created and invited to company successfully"
-        : "Existing user invited to company successfully",
-    });
+  const message = result.isNewUser
+    ? "User created and invited to company successfully"
+    : "Existing user invited to company successfully";
+
+  sendSuccess(res, result, message, 201);
+});
+
+// Bulk create users
+export const bulkCreateUsers = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const { users } = req.body;
+  const createdBy = req.user.id;
+
+  if (!Array.isArray(users) || users.length === 0) {
+    return sendError(res, "Users array is required and cannot be empty", 400);
+  }
+
+  const results = await AdminService.bulkCreateUsers(
+    companyId,
+    users,
+    createdBy
+  );
+
+  const statusCode =
+    results.errors.length === 0
+      ? 201
+      : results.success.length === 0
+      ? 400
+      : 207; // Multi-status
+
+  const message = `Processed ${results.total} users. ${results.success.length} successful, ${results.errors.length} failed.`;
+
+  sendSuccess(res, results, message, statusCode);
+});
+
+// Update user role in company
+export const updateUserRole = asyncHandler(async (req, res) => {
+  const { companyId, userId } = req.params;
+  const { role } = req.body;
+  const updatedBy = req.user.id;
+
+  const result = await AdminService.updateUserRole(
+    companyId,
+    userId,
+    role,
+    updatedBy
+  );
+
+  sendSuccess(res, result, "User role updated successfully");
+});
+
+// Get company team members
+export const getCompanyTeamMembers = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const { page = 1, limit = 10, role, status, search } = req.query;
+
+  const result = await AdminService.getCompanyTeamMembers(companyId, {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    role,
+    status,
+    search,
   });
 
-  // Bulk create users
-  static bulkCreateUsers = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-    const { users } = req.body;
-    const createdBy = req.user.id;
+  sendSuccess(
+    res,
+    result.memberships,
+    "Team members retrieved successfully",
+    200,
+    result.pagination
+  );
+});
 
-    if (!Array.isArray(users) || users.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Users array is required and cannot be empty",
-      });
-    }
+// Remove user from company
+export const removeUserFromCompany = asyncHandler(async (req, res) => {
+  const { companyId, userId } = req.params;
+  const removedBy = req.user.id;
 
-    const results = await AdminService.bulkCreateUsers(companyId, users, createdBy);
+  const result = await AdminService.removeUserFromCompany(
+    companyId,
+    userId,
+    removedBy
+  );
 
-    const statusCode = results.errors.length === 0 ? 201 : 
-                      results.success.length === 0 ? 400 : 207; // Multi-status
+  sendSuccess(res, null, result.message);
+});
 
-    res.status(statusCode).json({
-      success: results.errors.length === 0,
-      data: results,
-      message: `Processed ${results.total} users. ${results.success.length} successful, ${results.errors.length} failed.`,
-    });
-  });
+// Suspend user
+export const suspendUser = asyncHandler(async (req, res) => {
+  const { companyId, userId } = req.params;
+  const { reason } = req.body;
+  const suspendedBy = req.user.id;
 
-  // Update user role in company
-  static updateUserRole = asyncHandler(async (req, res) => {
-    const { companyId, userId } = req.params;
-    const { role } = req.body;
-    const updatedBy = req.user.id;
+  const result = await AdminService.suspendUser(
+    companyId,
+    userId,
+    suspendedBy,
+    reason
+  );
 
-    const result = await AdminService.updateUserRole(
-      companyId,
-      userId,
-      role,
-      updatedBy
-    );
+  sendSuccess(res, result, "User suspended successfully");
+});
 
-    res.status(200).json({
-      success: true,
-      data: result,
-      message: "User role updated successfully",
-    });
-  });
+// Reactivate user
+export const reactivateUser = asyncHandler(async (req, res) => {
+  const { companyId, userId } = req.params;
+  const reactivatedBy = req.user.id;
 
-  // Get company team members
-  static getCompanyTeamMembers = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-    const {
-      page = 1,
-      limit = 10,
-      role,
-      status,
-      search,
-    } = req.query;
+  const result = await AdminService.reactivateUser(
+    companyId,
+    userId,
+    reactivatedBy
+  );
 
-    const result = await AdminService.getCompanyTeamMembers(companyId, {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      role,
-      status,
-      search,
-    });
+  sendSuccess(res, result, "User reactivated successfully");
+});
 
-    res.status(200).json({
-      success: true,
-      data: result.memberships,
-      pagination: result.pagination,
-    });
-  });
+// Resend email verification
+export const resendEmailVerification = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { companyId } = req.body;
 
-  // Remove user from company
-  static removeUserFromCompany = asyncHandler(async (req, res) => {
-    const { companyId, userId } = req.params;
-    const removedBy = req.user.id;
+  const result = await AdminService.resendEmailVerification(userId, companyId);
 
-    const result = await AdminService.removeUserFromCompany(
-      companyId,
-      userId,
-      removedBy
-    );
+  sendSuccess(res, null, result.message);
+});
 
-    res.status(200).json({
-      success: true,
-      message: result.message,
-    });
-  });
+// Verify email (public endpoint)
+export const verifyEmail = asyncHandler(async (req, res) => {
+  const { token } = req.body;
 
-  // Suspend user
-  static suspendUser = asyncHandler(async (req, res) => {
-    const { companyId, userId } = req.params;
-    const { reason } = req.body;
-    const suspendedBy = req.user.id;
+  if (!token) {
+    return sendError(res, "Verification token is required", 400);
+  }
 
-    const result = await AdminService.suspendUser(
-      companyId,
-      userId,
-      suspendedBy,
-      reason
-    );
+  const result = await AdminService.verifyEmail(token);
 
-    res.status(200).json({
-      success: true,
-      data: result,
-      message: "User suspended successfully",
-    });
-  });
+  sendSuccess(res, result, "Email verified successfully");
+});
 
-  // Reactivate user
-  static reactivateUser = asyncHandler(async (req, res) => {
-    const { companyId, userId } = req.params;
-    const reactivatedBy = req.user.id;
+// Get email verification status
+export const getEmailVerificationStatus = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
 
-    const result = await AdminService.reactivateUser(
-      companyId,
-      userId,
-      reactivatedBy
-    );
+  // This would typically check the user's email verification status
+  // For now, we'll use the existing user service
+  const { getUserById } = await import("../services/userService.js");
+  const user = await getUserById(userId);
 
-    res.status(200).json({
-      success: true,
-      data: result,
-      message: "User reactivated successfully",
-    });
-  });
+  const verificationData = {
+    userId: user.id,
+    email: user.email,
+    emailVerified: user.email_verified,
+    emailVerifiedAt: user.email_verified_at,
+  };
 
-  // Resend email verification
-  static resendEmailVerification = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    const { companyId } = req.body;
-
-    const result = await AdminService.resendEmailVerification(userId, companyId);
-
-    res.status(200).json({
-      success: true,
-      message: result.message,
-    });
-  });
-
-  // Verify email (public endpoint)
-  static verifyEmail = asyncHandler(async (req, res) => {
-    const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "Verification token is required",
-      });
-    }
-
-    const result = await AdminService.verifyEmail(token);
-
-    res.status(200).json({
-      success: true,
-      data: result,
-      message: "Email verified successfully",
-    });
-  });
-
-  // Get email verification status
-  static getEmailVerificationStatus = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-    
-    // This would typically check the user's email verification status
-    // For now, we'll use the existing user service
-    const { UserService } = await import("../services/userService.js");
-    const user = await UserService.getUserById(userId);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        userId: user.id,
-        email: user.email,
-        emailVerified: user.email_verified,
-        emailVerifiedAt: user.email_verified_at,
-      },
-    });
-  });
-}
+  sendSuccess(
+    res,
+    verificationData,
+    "Email verification status retrieved successfully"
+  );
+});

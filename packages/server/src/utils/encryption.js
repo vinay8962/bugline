@@ -3,13 +3,12 @@
  * Uses AES-256-GCM for authenticated encryption
  */
 
-import crypto from 'crypto';
+import crypto from "crypto";
 
 // Encryption configuration
-const ALGORITHM = 'aes-256-gcm';
+const ALGORITHM = "aes-256-gcm";
 const KEY_LENGTH = 32; // 256 bits
-const IV_LENGTH = 16;  // 128 bits
-const TAG_LENGTH = 16; // 128 bits
+const IV_LENGTH = 16; // 128 bits
 
 /**
  * Generate encryption key from environment secret
@@ -18,42 +17,35 @@ const TAG_LENGTH = 16; // 128 bits
 const getEncryptionKey = () => {
   const secret = process.env.ENCRYPTION_SECRET || process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error('Encryption secret not configured');
+    throw new Error("Encryption secret not configured");
   }
-  
   // Derive a consistent key from the secret
-  return crypto.pbkdf2Sync(secret, 'bugline-salt', 100000, KEY_LENGTH, 'sha256');
+  return crypto.pbkdf2Sync(
+    secret,
+    "bugline-salt",
+    100000,
+    KEY_LENGTH,
+    "sha256"
+  );
 };
 
 /**
- * Encrypt sensitive data (simplified implementation compatible with frontend)
+ * Encrypt sensitive data using AES-256-GCM
  * @param {any} data - Data to encrypt
  * @returns {Object} { encryptedData, iv, tag }
  */
 export const encrypt = (data) => {
   try {
-    // Simplified encryption for compatibility
-    const dataString = JSON.stringify(data);
-    const keyMaterial = 'bugline-encryption-derived-key';
-    
-    // Generate a proper key from the key material
-    const key = crypto.createHash('sha256').update(keyMaterial).digest();
-    
-    // Generate a random IV for each encryption
-    const iv = crypto.randomBytes(16);
-    
-    // Use AES encryption compatible with CryptoJS
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    let encrypted = cipher.update(dataString, 'utf8', 'base64');
-    encrypted += cipher.final('base64');
-    
-    // Generate fake tag for API compatibility (CBC doesn't have auth tag)
-    const tag = crypto.randomBytes(TAG_LENGTH).toString('base64');
-    
+    const key = getEncryptionKey();
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+    let encrypted = cipher.update(JSON.stringify(data), "utf8", "base64");
+    encrypted += cipher.final("base64");
+    const tag = cipher.getAuthTag().toString("base64");
     return {
       encryptedData: encrypted,
-      iv: iv.toString('base64'),
-      tag
+      iv: iv.toString("base64"),
+      tag,
     };
   } catch (error) {
     throw new Error(`Encryption failed: ${error.message}`);
@@ -61,28 +53,20 @@ export const encrypt = (data) => {
 };
 
 /**
- * Decrypt sensitive data (simplified implementation compatible with frontend)
+ * Decrypt sensitive data using AES-256-GCM
  * @param {string} encryptedData - Base64 encrypted data
  * @param {string} iv - Base64 initialization vector
- * @param {string} tag - Base64 authentication tag (unused in CBC mode)
+ * @param {string} tag - Base64 authentication tag
  * @returns {any} Decrypted data
  */
 export const decrypt = (encryptedData, iv, tag) => {
   try {
-    // Simplified decryption for compatibility
-    const keyMaterial = 'bugline-encryption-derived-key';
-    
-    // Generate the same key from the key material
-    const key = crypto.createHash('sha256').update(keyMaterial).digest();
-    
-    // Convert IV from base64 back to buffer
-    const ivBuffer = Buffer.from(iv, 'base64');
-    
-    // Use AES decryption compatible with CryptoJS
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, ivBuffer);
-    let decrypted = decipher.update(encryptedData, 'base64', 'utf8');
-    decrypted += decipher.final('utf8');
-    
+    const key = getEncryptionKey();
+    const ivBuffer = Buffer.from(iv, "base64");
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, ivBuffer);
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    let decrypted = decipher.update(encryptedData, "base64", "utf8");
+    decrypted += decipher.final("utf8");
     return JSON.parse(decrypted);
   } catch (error) {
     throw new Error(`Decryption failed: ${error.message}`);
@@ -99,7 +83,7 @@ export const createEncryptedToken = (payload) => {
   return {
     token: encryptedData,
     iv,
-    tag
+    tag,
   };
 };
 
@@ -120,7 +104,7 @@ export const verifyEncryptedToken = (token, iv, tag) => {
  * @returns {string} SHA-256 hash
  */
 export const hashData = (data) => {
-  return crypto.createHash('sha256').update(data).digest('hex');
+  return crypto.createHash("sha256").update(data).digest("hex");
 };
 
 /**
@@ -129,7 +113,7 @@ export const hashData = (data) => {
  * @returns {string} Random token in hex format
  */
 export const generateSecureToken = (length = 32) => {
-  return crypto.randomBytes(length).toString('hex');
+  return crypto.randomBytes(length).toString("hex");
 };
 
 /**
@@ -147,9 +131,8 @@ export const encryptUserData = (userData) => {
     email_verified: userData.email_verified,
     is_verified: userData.is_verified,
     profile_picture: userData.profile_picture,
-    created_at: userData.created_at
+    created_at: userData.created_at,
   };
-  
   return createEncryptedToken(sensitiveData);
 };
 
@@ -161,10 +144,14 @@ export const encryptUserData = (userData) => {
  * @param {Object} adminContext - Admin context data (companyId, role, etc.)
  * @returns {Object} Secure response format
  */
-export const createSecureAuthResponse = (user, token, redirectTo, adminContext = {}) => {
+export const createSecureAuthResponse = (
+  user,
+  token,
+  redirectTo,
+  adminContext = {}
+) => {
   // Create comprehensive user data including admin context
   const userData = {
-    // Basic user data
     id: user.id,
     email: user.email,
     full_name: user.full_name,
@@ -173,26 +160,20 @@ export const createSecureAuthResponse = (user, token, redirectTo, adminContext =
     is_verified: user.is_verified,
     profile_picture: user.profile_picture,
     created_at: user.created_at,
-    
-    // Admin context if available
     ...(adminContext.companyId && {
       companyId: adminContext.companyId,
-      companyRole: adminContext.companyRole
+      companyRole: adminContext.companyRole,
     }),
-    
-    // Include any other admin context
-    ...adminContext
+    ...adminContext,
   };
-  
   // Encrypt the combined user data
   const encryptedUser = createEncryptedToken(userData);
-  
   return {
     encryptedUser: encryptedUser.token,
     iv: encryptedUser.iv,
     tag: encryptedUser.tag,
     token, // JWT for API authentication
-    redirectTo
+    redirectTo,
   };
 };
 
@@ -206,12 +187,14 @@ export const validateEncryptionConfig = () => {
     if (!secret || secret.length < 32) {
       return false;
     }
-    
     // Test encryption/decryption
-    const testData = { test: 'data' };
+    const testData = { test: "data" };
     const encrypted = encrypt(testData);
-    const decrypted = decrypt(encrypted.encryptedData, encrypted.iv, encrypted.tag);
-    
+    const decrypted = decrypt(
+      encrypted.encryptedData,
+      encrypted.iv,
+      encrypted.tag
+    );
     return JSON.stringify(testData) === JSON.stringify(decrypted);
   } catch (error) {
     return false;
@@ -226,6 +209,4 @@ export default {
   hashData,
   generateSecureToken,
   encryptUserData,
-  createSecureAuthResponse,
-  validateEncryptionConfig
 };

@@ -48,16 +48,36 @@ app.use(
 
 logSystem("Security middleware configured");
 
-// CORS configuration
+// CORS configuration with dynamic origin for widget support
 app.use(
   cors({
-    origin: [
-      process.env.CORS_ORIGIN || "http://localhost:5173",
-      "http://localhost:5001" // Allow Swagger UI requests
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      
+      // Default allowed origins
+      const allowedOrigins = [
+        process.env.CORS_ORIGIN || "http://localhost:5173",
+        "http://localhost:5001", // Allow Swagger UI requests
+        "https://cdn.jsdelivr.net", // CDN for widget hosting
+      ];
+      
+      // Check if origin is in default allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // For widget requests, origin validation is handled in widget auth middleware
+      // Allow all origins for widget endpoints - security is managed by project tokens
+      if (origin) {
+        return callback(null, true);
+      }
+      
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Origin"],
   })
 );
 

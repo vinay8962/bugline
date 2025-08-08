@@ -109,8 +109,8 @@ router.use(authenticateToken);
 router.post('/companies/:companyId/projects', requireCompanyAdmin, createProject);
 router.get('/companies/:companyId/projects', requireCompanyAccess, getCompanyProjects);
 router.get('/companies/:companyId/projects/search', requireCompanyAccess, searchProjects);
-router.get('/projects/:projectId', getProject);
-router.put('/projects/:projectId', updateProject);
-router.delete('/projects/:projectId', deleteProject);
+router.get('/projects/:projectId', requireCompanyAccess, getProject);
+router.put('/projects/:projectId', requireCompanyAdmin, updateProject);
+router.delete('/projects/:projectId', requireCompanyAdmin, deleteProject);
 
 export default router;

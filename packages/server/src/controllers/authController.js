@@ -59,7 +59,7 @@ export const register = asyncHandler(async (req, res) => {
   const duration = Date.now() - startTime;
   logPerformance("User registration", duration, { userId: user.id });
 
-  // Create secure encrypted response
+  // Create secure encrypted response for authentication
   const secureResponse = createSecureAuthResponse(user, token, 'dashboard');
 
   sendSuccess(res, secureResponse, "User registered successfully. Please check your email to verify your account.", 201);
@@ -86,7 +86,7 @@ export const verifyEmail = asyncHandler(async (req, res) => {
     const duration = Date.now() - startTime;
     logPerformance("Email verification", duration, { userId: user.id });
 
-    // Create secure encrypted response (no token needed for email verification)
+    // Create secure encrypted response for email verification (no token needed)
     const secureResponse = createSecureAuthResponse(user, null, null);
 
     sendSuccess(res, {
@@ -230,7 +230,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
 
   if (process.env.NODE_ENV === 'development') {
     console.log('🔑 Attempting Google login...');
-    console.log('🌐 Client ID configured:', process.env.GOOGLE_CLIENT_ID);
+    console.log('🌐 Client ID configured:', !!process.env.GOOGLE_CLIENT_ID);
   }
   
   try {
@@ -333,7 +333,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
       const duration = Date.now() - startTime;
       logPerformance("Google user creation", duration, { userId: newUser.id });
       
-      // Create secure encrypted response
+      // Create secure encrypted response for new user
       const secureResponse = createSecureAuthResponse(newUser, token, 'dashboard');
       
       return sendSuccess(res, secureResponse, "Account created successfully. Please create or join a company to continue.", 201);

@@ -5,6 +5,7 @@ import projectRoutes from "./projectRoutes.js";
 import bugRoutes from "./bugRoutes.js";
 import adminRoutes from "./adminRoutes.js";
 import authRoutes from "./authRoutes.js";
+import widgetRoutes from "./widgetRoutes.js";
 import { checkDatabaseConnection } from "../config/prisma.js";
 import { API } from "../config/constants.js";
 
@@ -65,6 +66,7 @@ router.get("/docs", (req, res) => {
       projects: `GET ${API.VERSION}/companies/:companyId/projects`,
       bugs: `POST ${API.VERSION}/bugs (public), GET ${API.VERSION}/projects/:projectId/bugs`,
       admin: `POST ${API.VERSION}/admin/companies/:companyId/users`,
+      widgets: `GET ${API.VERSION}/widgets/validate, POST ${API.VERSION}/widgets/bugs/report`
     },
     documentation: "https://github.com/your-repo/docs",
   });
@@ -77,6 +79,7 @@ router.use(`${API.VERSION}/companies`, companyRoutes);
 router.use(`${API.VERSION}`, projectRoutes); // Projects are nested under companies
 router.use(`${API.VERSION}`, bugRoutes); // Bugs are nested under projects
 router.use(`${API.VERSION}/admin`, adminRoutes);
+router.use(`${API.VERSION}`, widgetRoutes); // Widget routes
 
 // 404 handler for undefined routes
 router.use("*", (req, res) => {
@@ -92,6 +95,7 @@ router.use("*", (req, res) => {
       `${API.VERSION}/projects`,
       `${API.VERSION}/bugs`,
       `${API.VERSION}/admin`,
+      `${API.VERSION}/widgets`,
     ],
   });
 });

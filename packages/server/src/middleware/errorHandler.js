@@ -65,50 +65,34 @@ export const errorHandler = (err, req, res, _next) => {
   res.status(statusCode).json(errorResponse);
 };
 
-// Custom error classes
-export class AppError extends Error {
-  constructor(message, statusCode = 500) {
-    super(message);
-    this.statusCode = statusCode;
-    this.name = this.constructor.name;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
+// Functional error creation helpers
+export const createAppError = (message, statusCode = 500, name = 'AppError') => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.name = name;
+  Error.captureStackTrace(error, createAppError);
+  return error;
+};
 
-export class ValidationError extends AppError {
-  constructor(message = "Validation error") {
-    super(message, 400);
-    this.name = "ValidationError";
-  }
-}
+export const createValidationError = (message = "Validation error") => {
+  return createAppError(message, 400, "ValidationError");
+};
 
-export class UnauthorizedError extends AppError {
-  constructor(message = "Unauthorized") {
-    super(message, 401);
-    this.name = "UnauthorizedError";
-  }
-}
+export const createUnauthorizedError = (message = "Unauthorized") => {
+  return createAppError(message, 401, "UnauthorizedError");
+};
 
-export class ForbiddenError extends AppError {
-  constructor(message = "Forbidden") {
-    super(message, 403);
-    this.name = "ForbiddenError";
-  }
-}
+export const createForbiddenError = (message = "Forbidden") => {
+  return createAppError(message, 403, "ForbiddenError");
+};
 
-export class NotFoundError extends AppError {
-  constructor(message = "Resource not found") {
-    super(message, 404);
-    this.name = "NotFoundError";
-  }
-}
+export const createNotFoundError = (message = "Resource not found") => {
+  return createAppError(message, 404, "NotFoundError");
+};
 
-export class ConflictError extends AppError {
-  constructor(message = "Resource conflict") {
-    super(message, 409);
-    this.name = "ConflictError";
-  }
-}
+export const createConflictError = (message = "Resource conflict") => {
+  return createAppError(message, 409, "ConflictError");
+};
 
 // Async error wrapper
 export const asyncHandler = (fn) => {

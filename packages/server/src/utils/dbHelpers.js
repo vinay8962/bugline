@@ -71,6 +71,7 @@ export const handlePrismaError = (error) => {
 export const createError = (message, statusCode = 400) => {
   const error = new Error(message);
   error.statusCode = statusCode;
+  error.name = 'DatabaseError';
   return error;
 };
 

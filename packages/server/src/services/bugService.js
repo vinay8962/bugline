@@ -15,7 +15,10 @@ export const createBug = async (bugData) => {
         status: bugData.status || 'open',
         priority: bugData.priority || 'medium',
         reporter_email: bugData.reporter_email || null,
-        assigned_to: bugData.assigned_to || null
+        assigned_to: bugData.assigned_to || null,
+        error_details: bugData.error_details || null,
+        environment: bugData.environment || null,
+        source: bugData.source || 'manual'
       },
       include: {
         project: {
@@ -96,6 +99,9 @@ export const updateBug = async (bugId, updateData) => {
     if (updateData.priority) transformedData.priority = updateData.priority;
     if (updateData.assigned_to !== undefined) transformedData.assigned_to = updateData.assigned_to;
     if (updateData.reporter_email) transformedData.reporter_email = updateData.reporter_email;
+    if (updateData.error_details !== undefined) transformedData.error_details = updateData.error_details;
+    if (updateData.environment !== undefined) transformedData.environment = updateData.environment;
+    if (updateData.source) transformedData.source = updateData.source;
     
     const bug = await prisma.bug.update({
       where: { id: bugId },
@@ -375,6 +381,115 @@ export const unassignBug = async (bugId) => {
     });
     
     return bug;
+  } catch (error) {
+    throw handlePrismaError(error);
+  }
+};
+
+// Widget-specific functions
+export const getProjectBugStats = async (projectId, options = {}) => {
+  try {
+    const { source, period = '7d' } = options;
+    
+    // Calculate date range based on period
+    const now = new Date();
+    const periodMap = {
+      '24h': 1,
+      '7d': 7,
+      '30d': 30,
+      '90d': 90
+    };
+    
+    const daysBack = periodMap[period] || 7;
+    const startDate = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+    
+    const where = {
+      project_id: projectId,
+      created_at: {
+        gte: startDate
+      }
+    };
+    
+    // Filter by source if specified (for widget stats)
+    if (source) {
+      where.source = source;
+    }
+    
+    // Get basic counts
+    const [totalBugs, bugsByStatus, bugsByPriority, bugsBySource] = await Promise.all([
+      // Total bugs in period
+      prisma.bug.count({ where }),
+      
+      // Bugs by status
+      prisma.bug.groupBy({
+        by: ['status'],
+        where,
+        _count: true
+      }),
+      
+      // Bugs by priority
+      prisma.bug.groupBy({
+        by: ['priority'],
+        where,
+        _count: true
+      }),
+      
+      // Bugs by source (widget vs manual)
+      prisma.bug.groupBy({
+        by: ['source'],
+        where,
+        _count: true
+      })
+    ]);
+    
+    // Get daily trend data
+    const dailyTrends = await prisma.bug.groupBy({
+      by: ['created_at'],
+      where,
+      _count: true,
+      orderBy: {
+        created_at: 'asc'
+      }
+    });
+    
+    // Process daily trends into date buckets
+    const trendMap = {};
+    for (let i = daysBack - 1; i >= 0; i--) {
+      const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
+      const dateKey = date.toISOString().split('T')[0];
+      trendMap[dateKey] = 0;
+    }
+    
+    dailyTrends.forEach(trend => {
+      const dateKey = trend.created_at.toISOString().split('T')[0];
+      if (trendMap.hasOwnProperty(dateKey)) {
+        trendMap[dateKey] = trend._count;
+      }
+    });
+    
+    // Format response
+    const stats = {
+      period,
+      total: totalBugs,
+      byStatus: bugsByStatus.reduce((acc, item) => {
+        acc[item.status] = item._count;
+        return acc;
+      }, {}),
+      byPriority: bugsByPriority.reduce((acc, item) => {
+        acc[item.priority] = item._count;
+        return acc;
+      }, {}),
+      bySource: bugsBySource.reduce((acc, item) => {
+        acc[item.source] = item._count;
+        return acc;
+      }, {}),
+      trends: Object.entries(trendMap).map(([date, count]) => ({
+        date,
+        count
+      }))
+    };
+    
+    return stats;
   } catch (error) {
     throw handlePrismaError(error);
   }

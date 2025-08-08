@@ -35,10 +35,7 @@ export const getCompany = asyncHandler(async (req, res) => {
   
   const company = await CompanyService.getCompanyById(companyId);
   
-  res.json({
-    success: true,
-    data: company
-  });
+  sendSuccess(res, company, 'Company retrieved successfully');
 });
 
 // Update company
@@ -48,11 +45,7 @@ export const updateCompany = asyncHandler(async (req, res) => {
   
   const company = await CompanyService.updateCompany(companyId, updateData);
   
-  res.json({
-    success: true,
-    data: company,
-    message: 'Company updated successfully'
-  });
+  sendSuccess(res, company, 'Company updated successfully');
 });
 
 // Delete company
@@ -61,10 +54,7 @@ export const deleteCompany = asyncHandler(async (req, res) => {
   
   const result = await CompanyService.deleteCompany(companyId);
   
-  res.json({
-    success: true,
-    message: result.message
-  });
+  sendSuccess(res, null, result.message);
 });
 
 // Search companies
@@ -73,10 +63,7 @@ export const searchCompanies = asyncHandler(async (req, res) => {
   
   const companies = await CompanyService.searchCompanies(searchTerm, parseInt(limit));
   
-  res.json({
-    success: true,
-    data: companies
-  });
+  sendSuccess(res, companies, 'Companies search completed successfully');
 });
 
 // Company member management
@@ -85,10 +72,7 @@ export const getCompanyMembers = asyncHandler(async (req, res) => {
   
   const members = await CompanyService.getCompanyMembers(companyId);
   
-  res.json({
-    success: true,
-    data: members
-  });
+  sendSuccess(res, members, 'Company members retrieved successfully');
 });
 
 export const addUserToCompany = asyncHandler(async (req, res) => {
@@ -100,11 +84,7 @@ export const addUserToCompany = asyncHandler(async (req, res) => {
   if (userId) {
     // Add existing user to company
     result = await CompanyService.addUserToCompany(userId, companyId, role);
-    res.status(201).json({
-      success: true,
-      data: result,
-      message: 'User added to company successfully'
-    });
+    sendSuccess(res, result, 'User added to company successfully', 201);
   } else if (email && full_name && password) {
     // Create new user and add to company
     const userData = {
@@ -117,18 +97,13 @@ export const addUserToCompany = asyncHandler(async (req, res) => {
     
     result = await AdminService.createUserForCompany(companyId, userData, req.user.id);
     
-    res.status(201).json({
-      success: true,
-      data: result,
-      message: result.isNewUser 
-        ? 'User created and added to company successfully'
-        : 'Existing user added to company successfully'
-    });
+    const message = result.isNewUser 
+      ? 'User created and added to company successfully'
+      : 'Existing user added to company successfully';
+      
+    sendSuccess(res, result, message, 201);
   } else {
-    return res.status(400).json({
-      success: false,
-      message: 'Either userId or (email, full_name, password) must be provided'
-    });
+    return sendError(res, 'Either userId or (email, full_name, password) must be provided', 400);
   }
 });
 
@@ -137,10 +112,7 @@ export const removeUserFromCompany = asyncHandler(async (req, res) => {
   
   const result = await CompanyService.removeUserFromCompany(userId, companyId);
   
-  res.json({
-    success: true,
-    message: result.message
-  });
+  sendSuccess(res, null, result.message);
 });
 
 export const updateUserCompanyRole = asyncHandler(async (req, res) => {
@@ -149,9 +121,5 @@ export const updateUserCompanyRole = asyncHandler(async (req, res) => {
   
   const companyUser = await CompanyService.updateUserRole(userId, companyId, role);
   
-  res.json({
-    success: true,
-    data: companyUser,
-    message: 'User role updated successfully'
-  });
+  sendSuccess(res, companyUser, 'User role updated successfully');
 });
