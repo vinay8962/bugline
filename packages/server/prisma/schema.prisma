@@ -50,19 +50,28 @@ model CompanyUser {
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, company_id])
+  @@index([company_id])
+  @@index([user_id])
+  @@index([role])
   @@map("company_users")
 }
 
 model Project {
-  id         String   @id @default(uuid())
-  company_id String
-  name       String
-  slug       String
-  created_at DateTime @default(now())
-  bugs       Bug[]
-  company    Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  company_id      String
+  name            String
+  slug            String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
+  allowed_domains String?
+  project_token   String?
+  widget_settings Json?
+  bugs            Bug[]
+  company         Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
 
   @@unique([company_id, slug])
+  @@index([company_id])
+  @@index([created_at])
   @@map("projects")
 }
 
@@ -76,8 +85,20 @@ model Bug {
   reporter_email String?
   assigned_to    String?
   created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt
+  environment    String?
+  error_details  Json?
+  source         String?
   assignee       User?    @relation("AssignedBugs", fields: [assigned_to], references: [id])
   project        Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
+  // Performance indexes for fast queries
+  @@index([status])
+  @@index([priority])
+  @@index([assigned_to])
+  @@index([project_id])
+  @@index([project_id, status])
+  @@index([project_id, priority])
+  @@index([created_at])
   @@map("bugs")
 }
