@@ -3,7 +3,6 @@ import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "./errorHandler.js";
 // Basic authentication middleware
 export const authenticateToken = asyncHandler(async (req, res, next) => {
-  console.log('🔒 authenticateToken (JWT) called for:', req.method, req.originalUrl);
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
@@ -18,7 +17,7 @@ export const authenticateToken = asyncHandler(async (req, res, next) => {
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Get user from database
+    // Get user from database - only load essential data for authentication
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -26,17 +25,7 @@ export const authenticateToken = asyncHandler(async (req, res, next) => {
         email: true,
         full_name: true,
         global_role: true,
-        company_users: {
-          include: {
-            company: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        },
+        // Remove heavy company_users include - load only when specifically needed
       },
     });
 
@@ -138,22 +127,38 @@ export const requireCompanyRole = (requiredRoles) => {
   // Allow single role or array of roles
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
-  return (req, res, next) => {
+  return asyncHandler(async (req, res, next) => {
     // Super admins bypass company role checks
     if (req.user.global_role === "SUPER_ADMIN") {
       return next();
     }
-    if (!req.user.company_users.length) {
+
+    // Load user's company roles only when needed (not in every auth check)
+    const userWithCompanies = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        company_users: {
+          select: {
+            role: true,
+            company_id: true,
+          },
+        },
+      },
+    });
+
+    if (!userWithCompanies?.company_users?.length) {
       return res.status(403).json({
         success: false,
         message: "Company membership required",
       });
     }
 
-    console.log(
-      req.user.company_users.find((company) => roles.includes(company.role))
+    // Check if user has required role in any company
+    const hasRequiredRole = userWithCompanies.company_users.some(
+      (companyUser) => roles.includes(companyUser.role)
     );
-    if (!req.user.company_users.find((company) => roles.includes(company.role))) {
+
+    if (!hasRequiredRole) {
       return res.status(403).json({
         success: false,
         message: `Required role: ${roles.join(" or ")}`,
@@ -161,7 +166,7 @@ export const requireCompanyRole = (requiredRoles) => {
     }
 
     next();
-  };
+  });
 };
 
 // Check if user can manage company (ADMIN role)

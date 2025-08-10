@@ -50,6 +50,9 @@ model CompanyUser {
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, company_id])
+  @@index([company_id])
+  @@index([user_id])
+  @@index([role])
   @@map("company_users")
 }
 
@@ -67,6 +70,8 @@ model Project {
   company         Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
 
   @@unique([company_id, slug])
+  @@index([company_id])
+  @@index([created_at])
   @@map("projects")
 }
 
@@ -87,5 +92,13 @@ model Bug {
   assignee       User?    @relation("AssignedBugs", fields: [assigned_to], references: [id])
   project        Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
+  // Performance indexes for fast queries
+  @@index([status])
+  @@index([priority])
+  @@index([assigned_to])
+  @@index([project_id])
+  @@index([project_id, status])
+  @@index([project_id, priority])
+  @@index([created_at])
   @@map("bugs")
 }
