@@ -139,7 +139,7 @@ export const addUserToCompany = asyncHandler(async (req, res) => {
 
   if (userId) {
     // Add existing user to company
-    result = await CompanyService.addUserToCompany(userId, companyId, role);
+    result = await CompanyService.addUserToCompany(companyId, userId, role);
     res.status(201).json({
       success: true,
       data: result,
@@ -179,7 +179,7 @@ export const addUserToCompany = asyncHandler(async (req, res) => {
 export const removeUserFromCompany = asyncHandler(async (req, res) => {
   const { companyId, userId } = req.params;
 
-  const result = await CompanyService.removeUserFromCompany(userId, companyId);
+  const result = await CompanyService.removeUserFromCompany(companyId, userId);
 
   res.json({
     success: true,
@@ -201,5 +201,17 @@ export const updateUserCompanyRole = asyncHandler(async (req, res) => {
     success: true,
     data: companyUser,
     message: "User role updated successfully",
+  });
+});
+
+// Get company statistics
+export const getCompanyStats = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+
+  const stats = await CompanyService.getCompanyStats(companyId);
+
+  res.json({
+    success: true,
+    data: stats,
   });
 });

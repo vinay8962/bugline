@@ -10,6 +10,7 @@ import {
   addUserToCompany,
   removeUserFromCompany,
   updateUserCompanyRole,
+  getCompanyStats,
 } from "../controllers/companyController.js";
 import {
   createProject,
@@ -211,6 +212,9 @@ router.put(
   requireCompanyAdmin,
   updateUserCompanyRole
 );
+
+// Company stats route
+router.get("/:companyId/stats", requireCompanyAccess, getCompanyStats);
 
 router.post("/:companyId/projects", requireCompanyAdmin, createProject);
 router.get("/:companyId/projects", requireCompanyAccess, getCompanyProjects);

@@ -22,26 +22,81 @@ const CreateProject = ({ onClose, companyId, companyName, onSuccess }) => {
     if (field === "name" && !formData.slug) {
       setFormData((prev) => ({
         ...prev,
-        slug: value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
+        slug: value
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, ""),
       }));
     }
   };
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   try {
+  //     await createProject({ companyId, projectData: formData }).unwrap();
+  //     profileNotifications.projectAdded();
+  //     onSuccess && onSuccess();
+  //     onClose();
+  //   } catch (error) {
+  //     const errorMessage =
+  //       error?.data?.message || error?.message || "Failed to create project";
+  //     profileNotifications.projectAddError(errorMessage);
+  //   }
+  // };
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    console.log("=== CREATE PROJECT DEBUG ===");
+    console.log("Form data:", formData);
+    console.log("Company ID:", companyId);
+
     try {
-      await createProject({ companyId, projectData: formData }).unwrap();
-      profileNotifications.projectAdded();
-      onSuccess && onSuccess();
-      onClose();
+      console.log("Calling createProject API...");
+      const res = await createProject({
+        companyId,
+        projectData: formData,
+      }).unwrap();
+
+      console.log("API Response:", res);
+
+      // Check different possible success conditions
+      if (res.success || res.data || res.id || res.status === "success") {
+        console.log("Success detected, calling callbacks...");
+
+        try {
+          profileNotifications.projectAdded();
+          console.log("Notification sent");
+        } catch (notifError) {
+          console.error("Notification error:", notifError);
+        }
+
+        try {
+          if (onSuccess) {
+            console.log("Calling onSuccess...");
+            onSuccess();
+          }
+        } catch (successError) {
+          console.error("onSuccess error:", successError);
+        }
+
+        try {
+          console.log("Calling onClose...");
+          onClose();
+        } catch (closeError) {
+          console.error("onClose error:", closeError);
+        }
+      } else {
+        console.log("Success condition not met, response:", res);
+        throw new Error(res.message || "Failed to create project");
+      }
     } catch (error) {
-      const errorMessage =
-        error?.data?.message || error?.message || "Failed to create project";
-      profileNotifications.projectAddError(errorMessage);
+      console.error("Create project error:", error);
+      profileNotifications.projectAddError(
+        error?.data?.message || error?.message || "Failed to create project"
+      );
     }
   };
-
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
       <div className="bg-primary text-white rounded-lg border border-gray-800 shadow-xl w-full max-w-md">
@@ -93,7 +148,10 @@ const CreateProject = ({ onClose, companyId, companyName, onSuccess }) => {
               onChange={(e) =>
                 handleInputChange(
                   "slug",
-                  e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+                  e.target.value
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")
+                    .replace(/[^a-z0-9-]/g, "")
                 )
               }
               required
@@ -101,8 +159,8 @@ const CreateProject = ({ onClose, companyId, companyName, onSuccess }) => {
               className="w-full border border-gray-800 text-white px-3 py-2 rounded-md bg-gray-900 focus:border-blue-500 focus:outline-none"
             />
             <p className="text-xs text-gray-400 mt-1">
-              This will be used in your project URL. Use only letters,
-              numbers, and hyphens.
+              This will be used in your project URL. Use only letters, numbers,
+              and hyphens.
             </p>
           </div>
 

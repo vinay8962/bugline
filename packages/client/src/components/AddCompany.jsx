@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Building2, Save } from "lucide-react";
 import { useCreateCompanyMutation } from "../services/companyApi.js";
 import { profileNotifications } from "../utils/notifications.jsx";
 import LoadingSpinner from "./LoadingSpinner.jsx";
+import { secureStorage } from "../utils/encryption.js";
 
 const AddCompany = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const AddCompany = () => {
     slug: "",
   });
 
+  const navigate = useNavigate();
   const [createCompany, { isLoading }] = useCreateCompanyMutation();
 
   const handleInputChange = (field, value) => {
@@ -26,10 +28,36 @@ const AddCompany = () => {
     e.preventDefault();
 
     try {
-      await createCompany(formData).unwrap();
+      const result = await createCompany(formData).unwrap();
       profileNotifications.companyAdded();
-      // Redirect to dashboard or profile
-      window.location.href = "/profile";
+
+      // Set flag for other components to detect company creation
+      localStorage.setItem("company_created", "true");
+
+      // Update secureStorage with new company information
+      // This is crucial for useAuthStatus hook to detect the new company
+      if (result.data?.id) {
+        secureStorage.setItem("companyId", result.data.id);
+        secureStorage.setItem("companyRole", "ADMIN"); // Creator becomes admin
+
+        // Dispatch custom event to notify useAuthStatus hook
+        window.dispatchEvent(new Event("secureStorageChange"));
+
+        console.log("🔑 Updated secureStorage with new company:", {
+          companyId: result.data.id,
+          companyRole: "ADMIN",
+        });
+      }
+
+      // Add a small delay to ensure cache invalidation completes
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Navigate using React Router for proper state management
+      // This ensures cache invalidation happens and dashboard updates
+      navigate("/dashboard", {
+        replace: true,
+        state: { newCompanyCreated: true, companyId: result.data?.id },
+      });
     } catch (error) {
       const errorMessage =
         error?.data?.message || error?.message || "Failed to create company";

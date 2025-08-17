@@ -14,6 +14,7 @@ import {
 import { setGoogleUser, logoutUser } from "../features/auth/authSlice.js";
 import { authNotifications } from "../utils/notifications.jsx";
 import { secureStorage } from "../utils/encryption.js";
+import React from "react";
 
 /**
  * Main authentication hook
@@ -277,8 +278,41 @@ export const useGoogleAuth = () => {
  */
 export const useAuthStatus = () => {
   const { user, accessToken } = useSelector((state) => state.auth);
-  const companyRole = secureStorage.getItem("companyRole");
-  const companyId = secureStorage.getItem("companyId");
+  const [storageRefresh, setStorageRefresh] = React.useState(0);
+
+  // Listen for storage changes (company creation, etc.)
+  React.useEffect(() => {
+    const handleStorageChange = () => {
+      setStorageRefresh((prev) => prev + 1);
+    };
+
+    // Listen for our custom storage events
+    window.addEventListener("secureStorageChange", handleStorageChange);
+
+    // Also listen for the company_created flag
+    const handleCompanyCreated = (e) => {
+      if (e.key === "company_created" && e.newValue) {
+        setStorageRefresh((prev) => prev + 1);
+      }
+    };
+
+    window.addEventListener("storage", handleCompanyCreated);
+
+    return () => {
+      window.removeEventListener("secureStorageChange", handleStorageChange);
+      window.removeEventListener("storage", handleCompanyCreated);
+    };
+  }, []);
+
+  // Get values fresh from storage on each render when storageRefresh changes
+  const companyRole = React.useMemo(
+    () => secureStorage.getItem("companyRole"),
+    [storageRefresh]
+  );
+  const companyId = React.useMemo(
+    () => secureStorage.getItem("companyId"),
+    [storageRefresh]
+  );
 
   return {
     isAuthenticated: Boolean(user && accessToken),
@@ -299,5 +333,6 @@ export const useAuthStatus = () => {
       ["ADMIN", "DEVELOPER"].includes(companyRole),
     hasCompanyAccess:
       user?.global_role === "SUPER_ADMIN" || Boolean(companyRole && companyId),
+    _refreshKey: storageRefresh, // For debugging
   };
 };

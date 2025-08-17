@@ -6,7 +6,8 @@ import {
   Search,
   LogOut,
   Settings,
-  UserPlus} from "lucide-react";
+  UserPlus,
+} from "lucide-react";
 import BugStats from "../../components/BugStats";
 import AddEmployee from "../Employee/AddEmployee";
 import CompanyDashboard from "../../components/CompanyDashboard";
@@ -28,10 +29,30 @@ const Dashboard = () => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef();
   const dispatch = useDispatch();
-  
-  // Get auth status and company information
-  const { companyId, companyRole, hasCompanyAccess, isSuperAdmin } = useAuthStatus();
-  console.log(companyId, companyRole, hasCompanyAccess, isSuperAdmin);
+
+  // Get auth status and company information (now reactive to storage changes)
+  const {
+    companyId,
+    companyRole,
+    hasCompanyAccess,
+    isSuperAdmin,
+    _refreshKey,
+  } = useAuthStatus();
+  console.log("📊 Dashboard Auth Status:", {
+    companyId,
+    companyRole,
+    hasCompanyAccess,
+    isSuperAdmin,
+    _refreshKey,
+  });
+
+  // Clean up any company creation flags on mount
+  useEffect(() => {
+    if (localStorage.getItem("company_created")) {
+      console.log("🧹 Cleaning up company creation flag...");
+      localStorage.removeItem("company_created");
+    }
+  }, []);
 
   // Hook usage here
   useClickOutside(menuRef, () => setOpen(false));
@@ -46,10 +67,9 @@ const Dashboard = () => {
 
       // Navigate to login or home page
       navigate("/");
-
-      } catch (error) {
-        // Handle logout error
-      }
+    } catch (error) {
+      // Handle logout error
+    }
   };
 
   useEffect(() => {
@@ -186,50 +206,50 @@ const Dashboard = () => {
 
       {/* Bug List Section - Only show if not in super admin or company dashboard mode */}
       {!isSuperAdmin && (!hasCompanyAccess || !companyId) && (
-      <div className="backdrop-blur-sm bg-primary border border-gray-800 rounded-lg mb-0 p-6 max-w-7xl mx-auto">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-white">Bug Reports</h2>
-          <p className="text-sm text-gray-400">
-            View and manage all bug reports
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative w-full sm:flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search bugs..."
-              className="pl-10 pr-4 py-2 w-full text-white border border-gray-800 rounded-md bg-transparent text-sm"
-            />
+        <div className="backdrop-blur-sm bg-primary border border-gray-800 rounded-lg mb-0 p-6 max-w-7xl mx-auto">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-white">Bug Reports</h2>
+            <p className="text-sm text-gray-400">
+              View and manage all bug reports
+            </p>
           </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-800 rounded-md px-3 py-2 text-sm bg-primary text-white w-[140px]"
-          >
-            <option value="all">All Status</option>
-            <option value="open">Open</option>
-            <option value="in progress">In Progress</option>
-            <option value="fixed">Fixed</option>
-            <option value="closed">Closed</option>
-          </select>
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative w-full sm:flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search bugs..."
+                className="pl-10 pr-4 py-2 w-full text-white border border-gray-800 rounded-md bg-transparent text-sm"
+              />
+            </div>
 
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="border border-gray-800 rounded-md px-3 py-2 text-sm bg-primary text-white w-[140px]"
-          >
-            <option value="all">All Priority</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-gray-800 rounded-md px-3 py-2 text-sm bg-primary text-white w-[140px]"
+            >
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="in progress">In Progress</option>
+              <option value="fixed">Fixed</option>
+              <option value="closed">Closed</option>
+            </select>
+
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="border border-gray-800 rounded-md px-3 py-2 text-sm bg-primary text-white w-[140px]"
+            >
+              <option value="all">All Priority</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Modal for Add Employee */}
@@ -242,7 +262,10 @@ const Dashboard = () => {
             >
               ✕
             </button>
-            <AddEmployee onClose={() => setShowModal(false)} companyId={companyId} />
+            <AddEmployee
+              onClose={() => setShowModal(false)}
+              companyId={companyId}
+            />
           </div>
         </div>
       )}
