@@ -26,7 +26,8 @@ const AddCompany = () => {
     e.preventDefault();
 
     try {
-      await createCompany(formData).unwrap();
+      const response = await createCompany(formData).unwrap();
+      console.log("Create Company Response:", response); // 👈 See what API returned
       profileNotifications.companyAdded();
       // Redirect to dashboard or profile
       window.location.href = "/profile";

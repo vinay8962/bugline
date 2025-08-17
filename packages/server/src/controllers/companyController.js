@@ -1,7 +1,15 @@
 import * as CompanyService from "../services/companyService.js";
 import * as AdminService from "../services/adminService.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
-import { sendSuccess, sendError } from "../utils/responseHelpers.js";
+import {
+  sendSuccess,
+  sendError,
+  createPagination,
+} from "../utils/responseHelpers.js";
+import {
+  sanitizePagination,
+  createPaginationResponse,
+} from "../utils/paginationHelpers.js";
 
 // Create company
 export const createCompany = asyncHandler(async (req, res) => {
@@ -15,14 +23,20 @@ export const createCompany = asyncHandler(async (req, res) => {
 
 // Get all companies
 export const getCompanies = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, name } = req.query;
+  const { page, limit, name } = req.query;
+
+  // Apply pagination limits to prevent large data transfers
+  const { page: sanitizedPage, limit: sanitizedLimit } = sanitizePagination(
+    page,
+    limit
+  );
 
   const filters = {};
   if (name) filters.name = name;
 
   const result = await CompanyService.getAllCompanies(
-    parseInt(page),
-    parseInt(limit),
+    sanitizedPage,
+    sanitizedLimit,
     filters
   );
 
@@ -41,7 +55,10 @@ export const getCompany = asyncHandler(async (req, res) => {
 
   const company = await CompanyService.getCompanyById(companyId);
 
-  sendSuccess(res, company, "Company retrieved successfully");
+  res.json({
+    success: true,
+    data: company,
+  });
 });
 
 // Update company
@@ -51,7 +68,11 @@ export const updateCompany = asyncHandler(async (req, res) => {
 
   const company = await CompanyService.updateCompany(companyId, updateData);
 
-  sendSuccess(res, company, "Company updated successfully");
+  res.json({
+    success: true,
+    data: company,
+    message: "Company updated successfully",
+  });
 });
 
 // Delete company
@@ -60,19 +81,35 @@ export const deleteCompany = asyncHandler(async (req, res) => {
 
   const result = await CompanyService.deleteCompany(companyId);
 
-  sendSuccess(res, null, result.message);
+  res.json({
+    success: true,
+    message: result.message,
+  });
 });
 
 // Search companies
 export const searchCompanies = asyncHandler(async (req, res) => {
-  const { q: searchTerm, limit = 10 } = req.query;
+  const { q: searchTerm, limit } = req.query;
+
+  // Apply search term validation and limit constraints
+  const { limit: sanitizedLimit } = sanitizePagination(1, limit || 10);
+
+  if (!searchTerm || searchTerm.trim().length < 2) {
+    return res.status(400).json({
+      success: false,
+      message: "Search term must be at least 2 characters long",
+    });
+  }
 
   const companies = await CompanyService.searchCompanies(
-    searchTerm,
-    parseInt(limit)
+    searchTerm.trim(),
+    sanitizedLimit
   );
 
-  sendSuccess(res, companies, "Companies search completed successfully");
+  res.json({
+    success: true,
+    data: companies,
+  });
 });
 
 // Company member management
@@ -81,7 +118,10 @@ export const getCompanyMembers = asyncHandler(async (req, res) => {
 
   const members = await CompanyService.getCompanyMembers(companyId);
 
-  sendSuccess(res, members, "Company members retrieved successfully");
+  res.json({
+    success: true,
+    data: members,
+  });
 });
 
 export const addUserToCompany = asyncHandler(async (req, res) => {
@@ -100,7 +140,11 @@ export const addUserToCompany = asyncHandler(async (req, res) => {
   if (userId) {
     // Add existing user to company
     result = await CompanyService.addUserToCompany(userId, companyId, role);
-    sendSuccess(res, result, "User added to company successfully", 201);
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: "User added to company successfully",
+    });
   } else if (email && full_name && password) {
     // Create new user and add to company
     const userData = {
@@ -117,17 +161,18 @@ export const addUserToCompany = asyncHandler(async (req, res) => {
       req.user.id
     );
 
-    const message = result.isNewUser
-      ? "User created and added to company successfully"
-      : "Existing user added to company successfully";
-
-    sendSuccess(res, result, message, 201);
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: result.isNewUser
+        ? "User created and added to company successfully"
+        : "Existing user added to company successfully",
+    });
   } else {
-    return sendError(
-      res,
-      "Either userId or (email, full_name, password) must be provided",
-      400
-    );
+    return res.status(400).json({
+      success: false,
+      message: "Either userId or (email, full_name, password) must be provided",
+    });
   }
 });
 
@@ -136,7 +181,10 @@ export const removeUserFromCompany = asyncHandler(async (req, res) => {
 
   const result = await CompanyService.removeUserFromCompany(userId, companyId);
 
-  sendSuccess(res, null, result.message);
+  res.json({
+    success: true,
+    message: result.message,
+  });
 });
 
 export const updateUserCompanyRole = asyncHandler(async (req, res) => {
@@ -149,5 +197,9 @@ export const updateUserCompanyRole = asyncHandler(async (req, res) => {
     role
   );
 
-  sendSuccess(res, companyUser, "User role updated successfully");
+  res.json({
+    success: true,
+    data: companyUser,
+    message: "User role updated successfully",
+  });
 });

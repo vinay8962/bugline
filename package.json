@@ -51,8 +51,10 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "classnames": "^2.5.1",
     "cross-env": "^10.0.0",
     "google-auth-library": "^10.2.0",
+    "react-phone-input-2": "^2.15.1",
     "react-toastify": "^11.0.5"
   }
 }
