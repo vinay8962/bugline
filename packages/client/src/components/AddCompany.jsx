@@ -66,92 +66,150 @@ const AddCompany = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary p-6 md:px-20">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Link to="/profile">
-            <button className="p-2 border rounded-md border-gray-800 text-white shadow hover:bg-gray-800 transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-white">Create Company</h1>
-            <p className="text-gray-500">
-              Set up your first company to start managing bugs
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-primary text-white p-6 rounded-lg border border-gray-800 shadow">
-          <div className="flex items-center gap-2 mb-6">
-            <Building2 className="w-6 h-6 text-blue-500" />
-            <h2 className="text-xl font-semibold">Company Information</h2>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="min-h-screen bg-slate-900 text-white">
+      {/* Enhanced Header */}
+      <header className="bg-slate-800/50 border-b border-slate-700/50 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center space-x-4">
+            <Link to="/profile">
+              <button className="p-3 border border-slate-600/50 rounded-xl text-white shadow-lg hover:bg-slate-700/50 transition-all duration-200 hover:border-slate-500/50">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            </Link>
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Company Name *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                required
-                placeholder="Enter your company name"
-                className="w-full border border-gray-800 text-white px-3 py-2 rounded-md bg-gray-900 focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Company Slug *
-              </label>
-              <input
-                type="text"
-                value={formData.slug}
-                onChange={(e) =>
-                  handleInputChange(
-                    "slug",
-                    e.target.value.toLowerCase().replace(/\s+/g, "-")
-                  )
-                }
-                required
-                placeholder="company-slug"
-                className="w-full border border-gray-800 text-white px-3 py-2 rounded-md bg-gray-900 focus:border-blue-500 focus:outline-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                This will be used in your company URL. Use only letters,
-                numbers, and hyphens.
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Create Company
+              </h1>
+              <p className="text-slate-400">
+                Set up your first company to start managing bugs and projects
               </p>
             </div>
+          </div>
+        </div>
+      </header>
 
-            <div className="flex gap-4 pt-4">
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-6 py-12">
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm shadow-xl">
+          <div className="flex items-center space-x-3 mb-8">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+              <Building2 className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">
+                Company Information
+              </h2>
+              <p className="text-slate-400">
+                Fill in the details to create your company
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <label className="block text-sm font-semibold text-white mb-3">
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  required
+                  placeholder="Enter your company name"
+                  className="w-full border border-slate-600/50 text-white px-4 py-3 rounded-xl bg-slate-700/50 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder-slate-400"
+                />
+                <p className="text-xs text-slate-400 mt-2">
+                  This will be displayed as your company's name throughout the
+                  system
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-white mb-3">
+                  Company Slug *
+                </label>
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "slug",
+                      e.target.value.toLowerCase().replace(/\s+/g, "-")
+                    )
+                  }
+                  required
+                  placeholder="company-slug"
+                  className="w-full border border-slate-600/50 text-white px-4 py-3 rounded-xl bg-slate-700/50 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder-slate-400"
+                />
+                <p className="text-xs text-slate-400 mt-2">
+                  This will be used in your company URL. Use only letters,
+                  numbers, and hyphens.
+                </p>
+              </div>
+            </div>
+
+            {/* Company Preview */}
+            {formData.name && formData.slug && (
+              <div className="bg-slate-700/30 rounded-xl p-6 border border-slate-600/30">
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  Company Preview
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="text-sm text-slate-400 mb-2">
+                      Company Name
+                    </div>
+                    <div className="text-white font-medium">
+                      {formData.name}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-400 mb-2">
+                      Company Slug
+                    </div>
+                    <div className="text-blue-400 font-mono">
+                      /{formData.slug}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <button
                 type="submit"
                 disabled={isLoading || !formData.name || !formData.slug}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md shadow hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-xl shadow-lg hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-3 font-medium"
               >
                 {isLoading ? (
                   <LoadingSpinner size="sm" />
                 ) : (
-                  <Save className="w-4 h-4" />
+                  <Save className="w-5 h-5" />
                 )}
-                {isLoading ? "Creating..." : "Create Company"}
+                <span>{isLoading ? "Creating..." : "Create Company"}</span>
               </button>
               <Link
                 to="/profile"
-                className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors flex items-center justify-center"
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center font-medium border border-slate-600/50"
               >
                 Cancel
               </Link>
             </div>
           </form>
         </div>
-      </div>
+
+        {/* Additional Info */}
+        <div className="mt-8 text-center">
+          <div className="inline-flex items-center space-x-2 text-slate-400 text-sm">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span>
+              You'll be automatically assigned as an Admin of this company
+            </span>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

@@ -76,7 +76,7 @@ const modal = {
   },
 };
 
-const AddEmployee = ({ onClose, companyId }) => {
+const AddEmployee = ({ onClose, companyId, onEmployeeAdded }) => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -263,8 +263,11 @@ const AddEmployee = ({ onClose, companyId }) => {
       const result = { success: true };
 
       if (result.success) {
-        // Success - close modal
+        // Success - close modal and notify parent
         onClose();
+        if (onEmployeeAdded) {
+          onEmployeeAdded();
+        }
       } else {
         setErrors({
           submit: "Failed to create employee. Please try again.",

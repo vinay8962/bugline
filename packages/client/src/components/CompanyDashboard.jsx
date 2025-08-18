@@ -22,6 +22,7 @@ import CreateProject from "./CreateProject.jsx";
 import ProjectDashboard from "./ProjectDashboard.jsx";
 import LoadingSpinner from "./LoadingSpinner.jsx";
 import EmployeeList from "../components/EmployeeList.jsx";
+import AddEmployee from "../pages/Employee/AddEmployee.jsx";
 import { COMPANY_ROLES } from "@bugline/shared";
 import { useLocation } from "react-router-dom";
 
@@ -30,6 +31,7 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
   const [selectedCompanyId, setSelectedCompanyId] = useState(companyId);
   const [showCompanySelector, setShowCompanySelector] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [showAddEmployee, setShowAddEmployee] = useState(false);
   const location = useLocation();
 
   // Get current user data to get user ID
@@ -55,8 +57,6 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
       currentUserId &&
       !loadingUserCompanies
     ) {
-      console.log("🔄 New company created, refetching user companies...");
-      // Add small delay to ensure query is ready
       setTimeout(() => {
         refetchUserCompanies();
       }, 100);
@@ -87,7 +87,6 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
       currentUserId
     ) {
       const interval = setInterval(() => {
-        console.log("🔄 No companies found, attempting refetch...");
         refetchUserCompanies();
       }, 10000);
 
@@ -101,35 +100,24 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
     currentUserId,
   ]);
 
-  // Listen for company creation/updates from any component
+  // Listen for secureStorage changes
   useEffect(() => {
-    // Subscribe to store changes for company mutations
-    const unsubscribe =
-      refetchUserCompanies &&
-      currentUserId &&
-      (() => {
-        // Listen for successful company mutations
-        const handleStorageChange = (e) => {
-          if (e.key === "company_created" && e.newValue) {
-            console.log(
-              "🔄 Company creation detected via storage, refetching..."
-            );
-            // Add delay to ensure query is ready
-            setTimeout(() => {
-              if (!loadingUserCompanies && !isFetchingUserCompanies) {
-                refetchUserCompanies();
-              }
-            }, 200);
-            // Clear the flag
-            localStorage.removeItem("company_created");
-          }
-        };
+    const handleStorageChange = () => {
+      if (
+        refetchUserCompanies &&
+        currentUserId &&
+        !loadingUserCompanies &&
+        !isFetchingUserCompanies
+      ) {
+        setTimeout(() => {
+          refetchUserCompanies();
+        }, 200);
+      }
+    };
 
-        window.addEventListener("storage", handleStorageChange);
-        return () => window.removeEventListener("storage", handleStorageChange);
-      });
-
-    return unsubscribe;
+    window.addEventListener("secureStorageChange", handleStorageChange);
+    return () =>
+      window.removeEventListener("secureStorageChange", handleStorageChange);
   }, [
     refetchUserCompanies,
     currentUserId,
@@ -137,21 +125,19 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
     isFetchingUserCompanies,
   ]);
 
-  // Also check localStorage on mount in case we missed the event
+  // Check for company_created flag on mount
   useEffect(() => {
     if (
       localStorage.getItem("company_created") &&
       refetchUserCompanies &&
-      currentUserId
+      currentUserId &&
+      !loadingUserCompanies &&
+      !isFetchingUserCompanies
     ) {
-      console.log("🔄 Found company creation flag on mount, refetching...");
-      // Only refetch if query is ready and not currently loading
-      if (!loadingUserCompanies && !isFetchingUserCompanies) {
-        setTimeout(() => {
-          refetchUserCompanies();
-        }, 300);
-      }
-      localStorage.removeItem("company_created");
+      setTimeout(() => {
+        refetchUserCompanies();
+        localStorage.removeItem("company_created");
+      }, 300);
     }
   }, [
     refetchUserCompanies,
@@ -160,443 +146,257 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
     isFetchingUserCompanies,
   ]);
 
-  // Remove the immediate refetch on mount that was causing the error
-
-  const {
-    data: companyDetails,
-    isLoading: loadingCompany,
-    error: companyError,
-  } = useGetCompanyDetailsQuery(selectedCompanyId, {
-    skip: !selectedCompanyId,
-  });
-
-  const { data: companyStats, isLoading: loadingStats } =
-    useGetCompanyStatsQuery(selectedCompanyId, {
-      skip: !selectedCompanyId,
-    });
-
-  const {
-    data: projectsData,
-    isLoading: loadingProjects,
-    refetch: refetchProjects,
-  } = useGetProjectsByCompanyQuery(
-    { companyId: selectedCompanyId },
-    {
-      skip: !selectedCompanyId,
-    }
-  );
-
   const companies = userWithCompaniesData?.data?.companies || [];
-  const adminCompanies = companies.filter(
-    (company) => company?.role === COMPANY_ROLES.ADMIN
-  );
+  const currentCompany = companies.find((c) => c.id === companyId);
 
-  // Debug logging to understand data structure
-  React.useEffect(() => {
-    console.log("🔍 CompanyDashboard Debug Info:", {
-      userWithCompaniesData,
-      companies,
-      adminCompanies,
-      loadingUserCompanies,
-      currentUserId,
-      selectedCompanyId,
-      companyId: companyId,
-      timestamp: new Date().toISOString(),
+  // Get company details and stats
+  const { data: companyDetails, isLoading: loadingCompanyDetails } =
+    useGetCompanyDetailsQuery(companyId, {
+      skip: !companyId,
     });
 
-    if (userWithCompaniesData) {
-      console.log("👤 User with companies data:", userWithCompaniesData);
-      console.log("🏢 Companies:", companies);
-      console.log("👨‍💼 Admin companies:", adminCompanies);
-      console.log("📊 Companies count:", {
-        total: companies.length,
-        admin: adminCompanies.length,
-      });
-    } else {
-      console.log("❌ No user companies data available");
-    }
-  }, [
-    userWithCompaniesData,
-    companies,
-    adminCompanies,
-    loadingUserCompanies,
-    currentUserId,
-    selectedCompanyId,
-    companyId,
-  ]);
+  const { data: companyStats, isLoading: loadingCompanyStats } =
+    useGetCompanyStatsQuery(companyId, {
+      skip: !companyId,
+    });
 
-  // Auto-select first admin company if none selected
-  useEffect(() => {
-    if (
-      !selectedCompanyId &&
-      adminCompanies.length > 0 &&
-      adminCompanies[0]?.id
-    ) {
-      setSelectedCompanyId(adminCompanies[0].id);
-    }
-  }, [selectedCompanyId, adminCompanies]);
-
-  // Handle loading state
-  if (
-    loadingCurrentUser ||
-    loadingUserCompanies ||
-    loadingCompany ||
-    loadingProjects
-  ) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner />
-      </div>
+  // Get projects for the company
+  const { data: projectsData, isLoading: loadingProjects } =
+    useGetProjectsByCompanyQuery(
+      { companyId, page: 1, limit: 20, status: "" },
+      {
+        skip: !companyId,
+      }
     );
-  }
 
-  // Handle error state
-  if (companyError) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-400">Failed to load company details</p>
-      </div>
-    );
-  }
+  const projects = projectsData?.data || [];
 
-  // Handle case where user has no admin companies
-  if (!loadingUserCompanies && adminCompanies.length === 0) {
+  if (loadingUserCompanies || loadingCurrentUser) {
     return (
-      <div className="text-center py-12">
-        <div className="p-4 bg-gray-800 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-          <Building2 className="w-8 h-8 text-gray-400" />
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-slate-300 text-lg">Loading company data...</p>
         </div>
-        <h3 className="text-lg font-semibold text-white mb-2">
-          No Admin Companies
+      </div>
+    );
+  }
+
+  if (companies.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <div className="w-20 h-20 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Building2 className="h-10 w-10 text-slate-400" />
+        </div>
+        <h3 className="text-2xl font-bold text-white mb-4">
+          No Companies Found
         </h3>
-        <p className="text-gray-400 mb-4">
-          You are not an admin of any companies yet.
+        <p className="text-slate-400 mb-8 max-w-md mx-auto">
+          It looks like you don't have access to any companies yet. Please
+          contact your administrator or create a new company.
         </p>
         <button
-          onClick={() => {
-            console.log("🔄 Manual refresh triggered");
-            // Only refetch if query is ready and user is available
-            if (
-              refetchUserCompanies &&
-              currentUserId &&
-              !loadingUserCompanies &&
-              !isFetchingUserCompanies
-            ) {
-              refetchUserCompanies();
-            } else {
-              console.log(
-                "⚠️ Cannot refetch: query not ready or already loading"
-              );
-            }
-          }}
-          disabled={
-            !refetchUserCompanies ||
-            !currentUserId ||
-            loadingUserCompanies ||
-            isFetchingUserCompanies
-          }
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => refetchUserCompanies()}
+          disabled={isFetchingUserCompanies}
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
         >
           <RefreshCw
-            className={`w-4 h-4 ${
-              loadingUserCompanies || isFetchingUserCompanies
-                ? "animate-spin"
-                : ""
+            className={`h-4 w-4 ${
+              isFetchingUserCompanies ? "animate-spin" : ""
             }`}
           />
-          {loadingUserCompanies || isFetchingUserCompanies
-            ? "Refreshing..."
-            : "Refresh Companies"}
+          <span>Refresh</span>
         </button>
       </div>
     );
   }
 
-  const company = companyDetails?.data;
-  const projects = projectsData?.data || [];
-  const stats = companyStats?.data || {};
-
-  const isAdmin = companyRole === "ADMIN";
-
-  const handleProjectCreated = () => {
-    refetchProjects();
-  };
-
-  const handleProjectClick = (projectId) => {
-    setSelectedProjectId(projectId);
-  };
-
-  const handleBackToCompany = () => {
-    setSelectedProjectId(null);
-  };
-
-  // If a project is selected, show the ProjectDashboard
-  if (selectedProjectId) {
-    return (
-      <ProjectDashboard
-        projectId={selectedProjectId}
-        onBack={handleBackToCompany}
-      />
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Company Selector Header - Show if multiple admin companies */}
-      {adminCompanies.length > 1 && (
-        <div className="bg-primary border border-gray-800 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-white">
-                Company Dashboard
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Admin of {adminCompanies.length} companies
-              </p>
+    <div className="space-y-8">
+      {/* Company Header */}
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
+              <Building2 className="h-8 w-8 text-white" />
             </div>
-            <div className="relative">
-              <button
-                onClick={() => setShowCompanySelector(!showCompanySelector)}
-                className="flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <Building2 className="w-4 h-4" />
-                <span>
-                  {adminCompanies.find((c) => c.id === selectedCompanyId)
-                    ?.name || "Select Company"}
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                {currentCompany?.name || "Company Dashboard"}
+              </h1>
+              <div className="flex items-center space-x-3">
+                <span className="px-3 py-1 bg-slate-700 text-slate-300 text-sm rounded-full border border-slate-600">
+                  {currentCompany?.slug}
                 </span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-
-              {showCompanySelector && (
-                <div className="absolute right-0 mt-2 w-64 bg-primary border border-gray-700 rounded-lg shadow-xl z-50">
-                  <div className="p-2">
-                    {adminCompanies.map((company) => {
-                      if (!company?.id) return null;
-
-                      return (
-                        <button
-                          key={company.id}
-                          onClick={() => {
-                            setSelectedCompanyId(company.id);
-                            setShowCompanySelector(false);
-                          }}
-                          className={`w-full text-left p-3 rounded-lg transition-colors ${
-                            selectedCompanyId === company.id
-                              ? "bg-blue-600 text-white"
-                              : "text-gray-300 hover:bg-gray-800"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="p-1 bg-blue-600 rounded">
-                              <Building2 className="w-3 h-3 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-medium">
-                                {company.name || "Unnamed Company"}
-                              </p>
-                              <p className="text-xs text-gray-400">
-                                Role: {company.role}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
+                  {companyRole}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Company Header */}
-      <div className="bg-primary border border-gray-800 rounded-lg p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600 rounded-lg">
-              <Building2 className="w-8 h-8 text-white" />
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => refetchUserCompanies()}
+              disabled={isFetchingUserCompanies || loadingUserCompanies}
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${
+                  isFetchingUserCompanies ? "animate-spin" : ""
+                }`}
+              />
+              <span>Refresh</span>
+            </button>
+
+            <button
+              onClick={() => setShowCreateProject(true)}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
+            >
+              <FolderPlus className="h-5 w-5" />
+              <span>New Project</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Company Stats Overview */}
+        {companyStats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-slate-700/30 rounded-xl p-4 border border-slate-600/30">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-500 rounded-lg">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-white">
+                    {companyStats.totalUsers}
+                  </div>
+                  <div className="text-sm text-slate-400">Team Members</div>
+                </div>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">{company?.name}</h2>
-              <p className="text-gray-400">/{company?.slug}</p>
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                <div className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  <span>{company?.company_users?.length || 0} members</span>
+
+            <div className="bg-slate-700/30 rounded-xl p-4 border border-slate-600/30">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-emerald-500 rounded-lg">
+                  <FolderPlus className="h-5 w-5 text-white" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <FolderPlus className="w-4 h-4" />
-                  <span>{projects.length} projects</span>
+                <div>
+                  <div className="text-2xl font-bold text-white">
+                    {companyStats.totalProjects}
+                  </div>
+                  <div className="text-sm text-slate-400">Projects</div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    Since{" "}
-                    {company
-                      ? new Date(company.created_at).toLocaleDateString()
-                      : ""}
-                  </span>
+              </div>
+            </div>
+
+            <div className="bg-slate-700/30 rounded-xl p-4 border border-slate-600/30">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-orange-500 rounded-lg">
+                  <BarChart3 className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-white">
+                    {companyStats.totalBugs}
+                  </div>
+                  <div className="text-sm text-slate-400">Total Bugs</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-700/30 rounded-xl p-4 border border-slate-600/30">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-purple-500 rounded-lg">
+                  <Calendar className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-white">
+                    {companyStats.activeBugs}
+                  </div>
+                  <div className="text-sm text-slate-400">Active Issues</div>
                 </div>
               </div>
             </div>
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => setShowCreateProject(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              New Project
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Company Stats */}
-      {!loadingStats && stats && Object.keys(stats).length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-primary border border-gray-800 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-blue-500" />
-              <span className="text-gray-400 text-sm">Total Bugs</span>
-            </div>
-            <p className="text-2xl font-bold text-white mt-1">
-              {stats.totalBugs || 0}
-            </p>
-          </div>
-          <div className="bg-primary border border-gray-800 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-orange-500" />
-              <span className="text-gray-400 text-sm">Open Bugs</span>
-            </div>
-            <p className="text-2xl font-bold text-white mt-1">
-              {stats.openBugs || 0}
-            </p>
-          </div>
-          <div className="bg-primary border border-gray-800 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-blue-500" />
-              <span className="text-gray-400 text-sm">In Progress</span>
-            </div>
-            <p className="text-2xl font-bold text-white mt-1">
-              {stats.inProgressBugs || 0}
-            </p>
-          </div>
-          <div className="bg-primary border border-gray-800 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-green-500" />
-              <span className="text-gray-400 text-sm">Resolved</span>
-            </div>
-            <p className="text-2xl font-bold text-white mt-1">
-              {stats.resolvedBugs || 0}
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Projects Section */}
-      <div className="bg-primary border border-gray-800 rounded-lg p-6">
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-xl font-semibold text-white">Projects</h3>
-            <p className="text-gray-400 text-sm">
-              Manage your company projects
+            <h2 className="text-2xl font-bold text-white mb-2">Projects</h2>
+            <p className="text-slate-400">
+              Manage your company's projects and track their progress
             </p>
           </div>
-          {isAdmin && projects.length > 0 && (
-            <button
-              onClick={() => setShowCreateProject(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              New Project
-            </button>
-          )}
+          <button
+            onClick={() => setShowCreateProject(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Project</span>
+          </button>
         </div>
 
-        {projects.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="p-4 bg-gray-800 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-              <FolderPlus className="w-8 h-8 text-gray-400" />
+        {loadingProjects ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-slate-400">Loading projects...</p>
             </div>
-            <h4 className="text-lg font-semibold text-white mb-2">
-              No Projects Yet
-            </h4>
-            <p className="text-gray-400 mb-6 max-w-md mx-auto">
-              Get started by creating your first project to organize and track
-              bugs effectively.
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FolderPlus className="h-8 w-8 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-medium text-white mb-2">
+              No projects yet
+            </h3>
+            <p className="text-slate-400 mb-4">
+              Create your first project to start tracking bugs and issues
             </p>
-            {isAdmin && (
-              <button
-                onClick={() => setShowCreateProject(true)}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto"
-              >
-                <Plus className="w-5 h-5" />
-                Create Your First Project
-              </button>
-            )}
-            {!isAdmin && (
-              <p className="text-gray-500 text-sm">
-                Contact your company admin to create projects.
-              </p>
-            )}
+            <button
+              onClick={() => setShowCreateProject(true)}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
+            >
+              Create Project
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
               <div
                 key={project.id}
-                onClick={() => handleProjectClick(project.id)}
-                className="border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors cursor-pointer group"
+                className="bg-slate-700/30 rounded-xl p-6 border border-slate-600/30 hover:border-slate-500/50 transition-all duration-200 cursor-pointer group"
+                onClick={() => setSelectedProjectId(project.id)}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-600 rounded-lg">
-                      <FolderPlus className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white group-hover:text-blue-400 transition-colors">
-                        {project.name}
-                      </h4>
-                      <p className="text-sm text-gray-400">/{project.slug}</p>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                    <FolderPlus className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-slate-400">Created</div>
+                    <div className="text-sm text-white">
+                      {new Date(project.created_at).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
 
-                {project.bug_stats && (
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Total:</span>
-                      <span className="text-white">
-                        {project.bug_stats.total}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Open:</span>
-                      <span className="text-orange-300">
-                        {project.bug_stats.open}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">In Progress:</span>
-                      <span className="text-blue-300">
-                        {project.bug_stats.in_progress}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Resolved:</span>
-                      <span className="text-green-300">
-                        {project.bug_stats.resolved}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors duration-200">
+                  {project.name}
+                </h3>
+                <p className="text-slate-400 text-sm mb-4">{project.slug}</p>
 
-                <div className="mt-3 pt-3 border-t border-gray-700">
-                  <p className="text-xs text-gray-500">
-                    Created {new Date(project.created_at).toLocaleDateString()}
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <span className="text-sm text-slate-400">Active</span>
+                  </div>
+                  <div className="text-blue-400 group-hover:text-blue-300 transition-colors duration-200">
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
             ))}
@@ -604,19 +404,91 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
         )}
       </div>
 
-      {/** Employee List */}
-      <div className="mt-8">
-        <EmployeeList companyId={selectedCompanyId} />
+      {/* Team Members Section */}
+      <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-2">Team Members</h2>
+            <p className="text-slate-400">
+              Manage your company's team and their roles
+            </p>
+          </div>
+          {companyRole === "ADMIN" && (
+            <button
+              onClick={() => setShowAddEmployee(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
+            >
+              <Users className="h-4 w-4" />
+              <span>Add Member</span>
+            </button>
+          )}
+        </div>
+
+        <EmployeeList companyId={companyId} companyRole={companyRole} />
       </div>
 
       {/* Create Project Modal */}
       {showCreateProject && (
-        <CreateProject
-          onClose={() => setShowCreateProject(false)}
-          companyId={selectedCompanyId}
-          companyName={company?.name}
-          onSuccess={handleProjectCreated}
-        />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-2xl mx-auto">
+            <button
+              onClick={() => setShowCreateProject(false)}
+              className="absolute -top-12 right-0 text-white bg-slate-700 hover:bg-slate-600 rounded-full w-10 h-10 flex items-center justify-center transition-colors duration-200 border border-slate-600"
+            >
+              ✕
+            </button>
+            <CreateProject
+              companyId={companyId}
+              onClose={() => setShowCreateProject(false)}
+              onProjectCreated={() => {
+                setShowCreateProject(false);
+                // Refresh projects data
+                window.location.reload();
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Project Dashboard Modal */}
+      {selectedProjectId && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-7xl mx-auto h-full">
+            <button
+              onClick={() => setSelectedProjectId(null)}
+              className="absolute top-4 right-4 text-white bg-slate-700 hover:bg-slate-600 rounded-full w-10 h-10 flex items-center justify-center transition-colors duration-200 border border-slate-600 z-10"
+            >
+              ✕
+            </button>
+            <ProjectDashboard
+              projectId={selectedProjectId}
+              onBack={() => setSelectedProjectId(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Add Employee Modal */}
+      {showAddEmployee && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-2xl mx-auto">
+            <button
+              onClick={() => setShowAddEmployee(false)}
+              className="absolute -top-12 right-0 text-white bg-slate-700 hover:bg-slate-600 rounded-full w-10 h-10 flex items-center justify-center transition-colors duration-200 border border-slate-600"
+            >
+              ✕
+            </button>
+            <AddEmployee
+              companyId={companyId}
+              onClose={() => setShowAddEmployee(false)}
+              onEmployeeAdded={() => {
+                setShowAddEmployee(false);
+                // Refresh employee list
+                window.location.reload();
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
