@@ -1,19 +1,16 @@
-import { prisma } from '../config/prisma.js';
-import { 
-  handlePrismaError, 
-  createError 
-} from '../utils/dbHelpers.js';
+import { prisma } from "../config/prisma.js";
+import { handlePrismaError, createError } from "../utils/dbHelpers.js";
 
 // Admin operations
 export const promoteUserToSuperAdmin = async (userId) => {
   try {
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { 
-        global_role: 'SUPER_ADMIN'
-      }
+      data: {
+        global_role: "SUPER_ADMIN",
+      },
     });
-    
+
     const { password_hash, ...userWithoutPassword } = user;
     return userWithoutPassword;
   } catch (error) {
@@ -25,11 +22,11 @@ export const demoteSuperAdminToUser = async (userId) => {
   try {
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { 
-        global_role: 'USER'
-      }
+      data: {
+        global_role: "USER",
+      },
     });
-    
+
     const { password_hash, ...userWithoutPassword } = user;
     return userWithoutPassword;
   } catch (error) {
@@ -47,38 +44,38 @@ export const getSystemStats = async () => {
       superAdmins,
       activeCompanyUsers,
       openBugs,
-      criticalBugs
+      criticalBugs,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.company.count(),
       prisma.project.count(),
       prisma.bug.count(),
-      prisma.user.count({ where: { global_role: 'SUPER_ADMIN' } }),
+      prisma.user.count({ where: { global_role: "SUPER_ADMIN" } }),
       prisma.companyUser.count(),
-      prisma.bug.count({ where: { status: 'open' } }),
-      prisma.bug.count({ where: { priority: 'critical' } })
+      prisma.bug.count({ where: { status: "open" } }),
+      prisma.bug.count({ where: { priority: "critical" } }),
     ]);
-    
+
     return {
       users: {
         total: totalUsers,
         super_admins: superAdmins,
-        regular_users: totalUsers - superAdmins
+        regular_users: totalUsers - superAdmins,
       },
       companies: {
-        total: totalCompanies
+        total: totalCompanies,
       },
       projects: {
-        total: totalProjects
+        total: totalProjects,
       },
       bugs: {
         total: totalBugs,
         open: openBugs,
-        critical: criticalBugs
+        critical: criticalBugs,
       },
       company_memberships: {
-        total: activeCompanyUsers
-      }
+        total: activeCompanyUsers,
+      },
     };
   } catch (error) {
     throw handlePrismaError(error);
@@ -88,52 +85,52 @@ export const getSystemStats = async () => {
 export const manageCompanyUsers = async (companyId, action, userId, role) => {
   try {
     switch (action) {
-      case 'add': {
+      case "add": {
         const newMembership = await prisma.companyUser.create({
           data: {
             user_id: userId,
             company_id: companyId,
-            role: role || 'OTHERS'
+            role: role || "OTHERS",
           },
           include: {
             user: {
               select: {
                 id: true,
                 email: true,
-                full_name: true
-              }
+                full_name: true,
+              },
             },
             company: {
               select: {
                 id: true,
                 name: true,
-                slug: true
-              }
-            }
-          }
+                slug: true,
+              },
+            },
+          },
         });
         return newMembership;
       }
-        
-      case 'remove': {
+
+      case "remove": {
         await prisma.companyUser.delete({
           where: {
             user_id_company_id: {
               user_id: userId,
-              company_id: companyId
-            }
-          }
+              company_id: companyId,
+            },
+          },
         });
-        return { message: 'User removed from company successfully' };
+        return { message: "User removed from company successfully" };
       }
-        
-      case 'update_role': {
+
+      case "update_role": {
         const updatedMembership = await prisma.companyUser.update({
           where: {
             user_id_company_id: {
               user_id: userId,
-              company_id: companyId
-            }
+              company_id: companyId,
+            },
           },
           data: { role: role },
           include: {
@@ -141,23 +138,23 @@ export const manageCompanyUsers = async (companyId, action, userId, role) => {
               select: {
                 id: true,
                 email: true,
-                full_name: true
-              }
+                full_name: true,
+              },
             },
             company: {
               select: {
                 id: true,
                 name: true,
-                slug: true
-              }
-            }
-          }
+                slug: true,
+              },
+            },
+          },
         });
         return updatedMembership;
       }
-        
+
       default:
-        throw createError('Invalid action', 400);
+        throw createError("Invalid action", 400);
     }
   } catch (error) {
     throw handlePrismaError(error);
@@ -169,11 +166,11 @@ export const getAllSystemUsers = async (page = 1, limit = 10, filters = {}) => {
   try {
     const skip = (page - 1) * limit;
     const where = {};
-    
+
     if (filters.global_role) {
       where.global_role = filters.global_role;
     }
-    
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -186,31 +183,31 @@ export const getAllSystemUsers = async (page = 1, limit = 10, filters = {}) => {
                 select: {
                   id: true,
                   name: true,
-                  slug: true
-                }
-              }
-            }
-          }
+                  slug: true,
+                },
+              },
+            },
+          },
         },
-        orderBy: { created_at: 'desc' }
+        orderBy: { created_at: "desc" },
       }),
-      prisma.user.count({ where })
+      prisma.user.count({ where }),
     ]);
-    
+
     // Remove passwords from response
-    const usersWithoutPasswords = users.map(user => {
+    const usersWithoutPasswords = users.map((user) => {
       const { password_hash, ...userWithoutPassword } = user;
       return userWithoutPassword;
     });
-    
+
     return {
       users: usersWithoutPasswords,
       pagination: {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   } catch (error) {
     throw handlePrismaError(error);
@@ -221,7 +218,7 @@ export const getAllSystemUsers = async (page = 1, limit = 10, filters = {}) => {
 export const getAllCompaniesWithStats = async (page = 1, limit = 10) => {
   try {
     const skip = (page - 1) * limit;
-    
+
     const [companies, total] = await Promise.all([
       prisma.company.findMany({
         skip,
@@ -233,10 +230,10 @@ export const getAllCompaniesWithStats = async (page = 1, limit = 10) => {
                 select: {
                   id: true,
                   email: true,
-                  full_name: true
-                }
-              }
-            }
+                  full_name: true,
+                },
+              },
+            },
           },
           projects: {
             include: {
@@ -244,21 +241,21 @@ export const getAllCompaniesWithStats = async (page = 1, limit = 10) => {
                 select: {
                   id: true,
                   status: true,
-                  priority: true
-                }
-              }
-            }
-          }
+                  priority: true,
+                },
+              },
+            },
+          },
         },
-        orderBy: { created_at: 'desc' }
+        orderBy: { created_at: "desc" },
       }),
-      prisma.company.count()
+      prisma.company.count(),
     ]);
-    
+
     // Add statistics to each company
-    const companiesWithStats = companies.map(company => {
-      const allBugs = company.projects.flatMap(p => p.bugs);
-      
+    const companiesWithStats = companies.map((company) => {
+      const allBugs = company.projects.flatMap((p) => p.bugs);
+
       return {
         ...company,
         stats: {
@@ -266,21 +263,21 @@ export const getAllCompaniesWithStats = async (page = 1, limit = 10) => {
           projects: company.projects.length,
           bugs: {
             total: allBugs.length,
-            open: allBugs.filter(b => b.status === 'open').length,
-            critical: allBugs.filter(b => b.priority === 'critical').length
-          }
-        }
+            open: allBugs.filter((b) => b.status === "open").length,
+            critical: allBugs.filter((b) => b.priority === "critical").length,
+          },
+        },
       };
     });
-    
+
     return {
       companies: companiesWithStats,
       pagination: {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   } catch (error) {
     throw handlePrismaError(error);
@@ -291,54 +288,54 @@ export const getAllCompaniesWithStats = async (page = 1, limit = 10) => {
 export const createUserForCompany = async (companyId, userData, createdBy) => {
   try {
     // Note: createdBy parameter is not currently stored in CompanyUser model
-    const { email, full_name, phone, password, role = 'OTHERS' } = userData;
-    
+    const { email, full_name, phone, password, role = "OTHERS" } = userData;
+
     // Check if user already exists
     let user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
-    
+
     let isNewUser = false;
-    
+
     if (!user) {
       // Create new user
-      const bcrypt = await import('bcrypt');
+      const bcrypt = await import("bcrypt");
       const hashedPassword = await bcrypt.hash(password, 12);
-      
+
       user = await prisma.user.create({
         data: {
           email,
           full_name,
           phone,
           password_hash: hashedPassword,
-          global_role: 'USER',
-          email_verified: true // Admin-created users are verified by default
-        }
+          global_role: "USER",
+          email_verified: true, // Admin-created users are verified by default
+        },
       });
-      
+
       isNewUser = true;
     }
-    
+
     // Check if user is already a member of the company
     const existingMembership = await prisma.companyUser.findUnique({
       where: {
         user_id_company_id: {
           user_id: user.id,
-          company_id: companyId
-        }
-      }
+          company_id: companyId,
+        },
+      },
     });
-    
+
     if (existingMembership) {
-      throw createError('User is already a member of this company', 409);
+      throw createError("User is already a member of this company", 409);
     }
-    
+
     // Add user to company
     const companyUser = await prisma.companyUser.create({
       data: {
         user_id: user.id,
         company_id: companyId,
-        role
+        role,
       },
       include: {
         user: {
@@ -347,22 +344,22 @@ export const createUserForCompany = async (companyId, userData, createdBy) => {
             email: true,
             full_name: true,
             phone: true,
-            created_at: true
-          }
+            created_at: true,
+          },
         },
         company: {
           select: {
             id: true,
             name: true,
-            slug: true
-          }
-        }
-      }
+            slug: true,
+          },
+        },
+      },
     });
-    
+
     return {
       ...companyUser,
-      isNewUser
+      isNewUser,
     };
   } catch (error) {
     throw handlePrismaError(error);

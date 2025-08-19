@@ -24,6 +24,7 @@ import {
   authenticateToken,
   requireCompanyAccess,
   requireCompanyAdmin,
+  requireSpecificCompanyAdmin,
 } from "../middleware/auth.js";
 import { requireSuperAdmin } from "../middleware/superAdminValidator.js";
 import { validate, companySchemas } from "../middleware/validation.js";
@@ -201,7 +202,11 @@ router.get("/:companyId/members", requireCompanyAccess, getCompanyMembers);
  *       404:
  *         description: Company not found
  */
-router.post("/:companyId/members", requireCompanyAdmin, addUserToCompany);
+router.post(
+  "/:companyId/members",
+  requireSpecificCompanyAdmin,
+  addUserToCompany
+);
 router.delete(
   "/:companyId/members/:userId",
   requireCompanyAdmin,
@@ -216,7 +221,7 @@ router.put(
 // Company stats route
 router.get("/:companyId/stats", requireCompanyAccess, getCompanyStats);
 
-router.post("/:companyId/projects", requireCompanyAdmin, createProject);
+router.post("/:companyId/projects", requireSpecificCompanyAdmin, createProject);
 router.get("/:companyId/projects", requireCompanyAccess, getCompanyProjects);
 router.get("/:companyId/projects/search", requireCompanyAccess, searchProjects);
 router.get("/projects/:projectId", requireCompanyAccess, getProject);

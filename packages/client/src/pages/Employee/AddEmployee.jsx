@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCreateEmployeeMutation } from "../../services/userApi.js";
+import { showSuccess, showError } from "../../utils/notifications.jsx";
 
 // Mock constants since we don't have access to the actual shared module
 const COMPANY_ROLES = {
@@ -87,7 +89,9 @@ const AddEmployee = ({ onClose, companyId, onEmployeeAdded }) => {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [createEmployee, { isLoading: isSubmitting }] =
+    useCreateEmployeeMutation();
 
   // Mock auth status since we don't have access to the actual hook
   const authCompanyId = "mock-company-id";
@@ -241,8 +245,6 @@ const AddEmployee = ({ onClose, companyId, onEmployeeAdded }) => {
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
       // Create employee data
       const employeeData = {
@@ -256,28 +258,33 @@ const AddEmployee = ({ onClose, companyId, onEmployeeAdded }) => {
 
       console.log("Creating employee:", employeeData);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const result = await createEmployee(employeeData).unwrap();
 
-      // Mock success response
-      const result = { success: true };
-
-      if (result.success) {
-        // Success - close modal and notify parent
+      if (
+        result.success ||
+        result.data ||
+        result.id ||
+        result.status === "success"
+      ) {
+        showSuccess("Employee created successfully!");
         onClose();
         if (onEmployeeAdded) {
           onEmployeeAdded();
         }
       } else {
         setErrors({
-          submit: "Failed to create employee. Please try again.",
+          submit:
+            result.message || "Failed to create employee. Please try again.",
         });
       }
     } catch (error) {
       console.error("Error creating employee:", error);
-      setErrors({ submit: "Failed to create employee. Please try again." });
-    } finally {
-      setIsSubmitting(false);
+      const errorMessage =
+        error?.data?.message || error?.message || "Failed to create employee";
+      showError(errorMessage);
+      setErrors({
+        submit: errorMessage,
+      });
     }
   };
 

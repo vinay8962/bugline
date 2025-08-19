@@ -13,8 +13,8 @@ export const createProject = async (projectData, companyId, userId = null) => {
           projectData.name.toLowerCase().replace(/\s+/g, "-"),
         company_id: companyId,
         project_token: generateSecureToken(16), // Generate 32-char hex token
-        allowed_domains: projectData.allowed_domains || [],
-        widget_settings: projectData.widget_settings || {},
+        allowed_domains: projectData.allowed_domains || null, // Let Prisma use default
+        widget_settings: projectData.widget_settings || null, // Let Prisma use default
       },
     });
 
@@ -110,7 +110,7 @@ export const deleteProject = async (projectId) => {
 export const getCompanyProjects = async (companyId, page = 1, limit = 10) => {
   try {
     const skip = (page - 1) * limit;
-    
+
     // Get projects without loading all bugs
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
@@ -122,16 +122,16 @@ export const getCompanyProjects = async (companyId, page = 1, limit = 10) => {
           name: true,
           slug: true,
           created_at: true,
-          company_id: true
+          company_id: true,
         },
         orderBy: { created_at: "desc" },
       }),
       prisma.project.count({ where: { company_id: companyId } }),
     ]);
-    
+
     // Get bug statistics for all projects in a single efficient query
-    const projectIds = projects.map(p => p.id);
-    
+    const projectIds = projects.map((p) => p.id);
+
     if (projectIds.length === 0) {
       return {
         projects: [],
@@ -139,77 +139,77 @@ export const getCompanyProjects = async (companyId, page = 1, limit = 10) => {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       };
     }
-    
+
     // Use Prisma's groupBy to get aggregated bug statistics efficiently
     const [statusStats, priorityStats, totalCounts] = await Promise.all([
       // Group by project and status to get status counts
       prisma.bug.groupBy({
-        by: ['project_id', 'status'],
+        by: ["project_id", "status"],
         where: {
-          project_id: { in: projectIds }
+          project_id: { in: projectIds },
         },
         _count: {
-          id: true
-        }
+          id: true,
+        },
       }),
-      // Group by project and priority to get priority counts  
+      // Group by project and priority to get priority counts
       prisma.bug.groupBy({
-        by: ['project_id', 'priority'],
+        by: ["project_id", "priority"],
         where: {
-          project_id: { in: projectIds }
+          project_id: { in: projectIds },
         },
         _count: {
-          id: true
-        }
+          id: true,
+        },
       }),
       // Get total bug count per project
       prisma.bug.groupBy({
-        by: ['project_id'],
+        by: ["project_id"],
         where: {
-          project_id: { in: projectIds }
+          project_id: { in: projectIds },
         },
         _count: {
-          id: true
-        }
-      })
+          id: true,
+        },
+      }),
     ]);
-    
+
     // Create lookup maps for efficient data access
     const statusMap = new Map();
     const priorityMap = new Map();
     const totalMap = new Map();
-    
+
     // Build status statistics map
-    statusStats.forEach(stat => {
+    statusStats.forEach((stat) => {
       if (!statusMap.has(stat.project_id)) {
         statusMap.set(stat.project_id, {});
       }
       statusMap.get(stat.project_id)[stat.status] = stat._count.id;
     });
-    
+
     // Build priority statistics map
-    priorityStats.forEach(stat => {
+    priorityStats.forEach((stat) => {
       if (!priorityMap.has(stat.project_id)) {
         priorityMap.set(stat.project_id, {});
       }
       priorityMap.get(stat.project_id)[stat.priority] = stat._count.id;
     });
-    
+
     // Build total count map
-    totalCounts.forEach(stat => {
+    totalCounts.forEach((stat) => {
       totalMap.set(stat.project_id, stat._count.id);
     });
-    
+
     // Add bug statistics to each project efficiently
-    const projectsWithStats = projects.map(project => {
+    const projectsWithStats = projects.map((project) => {
       const projectStatusStats = statusMap.get(project.id) || {};
       const projectPriorityStats = priorityMap.get(project.id) || {};
       const totalBugs = totalMap.get(project.id) || 0;
-      
+
       return {
         ...project,
         bug_stats: {
@@ -219,11 +219,11 @@ export const getCompanyProjects = async (companyId, page = 1, limit = 10) => {
           resolved: projectStatusStats.resolved || 0,
           closed: projectStatusStats.closed || 0,
           critical: projectPriorityStats.critical || 0,
-          high: projectPriorityStats.high || 0
-        }
+          high: projectPriorityStats.high || 0,
+        },
       };
     });
-    
+
     return {
       projects: projectsWithStats,
       pagination: {

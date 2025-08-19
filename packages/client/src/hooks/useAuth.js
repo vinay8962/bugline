@@ -305,14 +305,13 @@ export const useAuthStatus = () => {
   }, []);
 
   // Get values fresh from storage on each render when storageRefresh changes
-  const companyRole = React.useMemo(
-    () => secureStorage.getItem("companyRole"),
-    [storageRefresh]
-  );
-  const companyId = React.useMemo(
-    () => secureStorage.getItem("companyId"),
-    [storageRefresh]
-  );
+  const companyRole = React.useMemo(() => {
+    return secureStorage.getItem("companyRole");
+  }, [storageRefresh]);
+
+  const companyId = React.useMemo(() => {
+    return secureStorage.getItem("companyId");
+  }, [storageRefresh]);
 
   return {
     isAuthenticated: Boolean(user && accessToken),

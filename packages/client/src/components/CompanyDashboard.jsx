@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Building2,
   FolderPlus,
@@ -9,10 +9,7 @@ import {
   ChevronDown,
   RefreshCw,
 } from "lucide-react";
-import {
-  useGetCompanyDetailsQuery,
-  useGetCompanyStatsQuery,
-} from "../services/companyApi.js";
+import { useGetCompanyStatsQuery } from "../services/companyApi.js";
 import { useGetProjectsByCompanyQuery } from "../services/projectApi.js";
 import {
   useGetCurrentUserQuery,
@@ -24,7 +21,8 @@ import LoadingSpinner from "./LoadingSpinner.jsx";
 import EmployeeList from "../components/EmployeeList.jsx";
 import AddEmployee from "../pages/Employee/AddEmployee.jsx";
 import { COMPANY_ROLES } from "@bugline/shared";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { secureStorage } from "../utils/encryption.js";
 
 const CompanyDashboard = ({ companyId, companyRole }) => {
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -33,6 +31,35 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const location = useLocation();
+  const companySelectorRef = useRef(null);
+  const navigate = useNavigate();
+
+  // Handle click outside to close company selector
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        companySelectorRef.current &&
+        !companySelectorRef.current.contains(event.target)
+      ) {
+        setShowCompanySelector(false);
+      }
+    };
+
+    if (showCompanySelector) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showCompanySelector]);
+
+  // Update selectedCompanyId when companyId prop changes
+  useEffect(() => {
+    if (companyId && companyId !== selectedCompanyId) {
+      setSelectedCompanyId(companyId);
+    }
+  }, [companyId, selectedCompanyId]);
 
   // Get current user data to get user ID
   const { data: currentUserData, isLoading: loadingCurrentUser } =
@@ -43,133 +70,55 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
   const {
     data: userWithCompaniesData,
     isLoading: loadingUserCompanies,
-    refetch: refetchUserCompanies,
     isFetching: isFetchingUserCompanies,
   } = useGetUserByIdQuery(currentUserId, {
     skip: !currentUserId,
   });
 
-  // Check if we just created a new company and force a refetch
-  useEffect(() => {
-    if (
-      location.state?.newCompanyCreated &&
-      refetchUserCompanies &&
-      currentUserId &&
-      !loadingUserCompanies
-    ) {
-      setTimeout(() => {
-        refetchUserCompanies();
-      }, 100);
-
-      // Clear the state to prevent repeated refetches
-      if (window.history.replaceState) {
-        window.history.replaceState(
-          { ...location.state, newCompanyCreated: false },
-          ""
-        );
-      }
-    }
-  }, [
-    location.state?.newCompanyCreated,
-    refetchUserCompanies,
-    currentUserId,
-    loadingUserCompanies,
-  ]);
-
-  // Force refetch every 10 seconds if no companies (fallback for cache issues)
-  useEffect(() => {
-    const companies = userWithCompaniesData?.data?.companies || [];
-    if (
-      companies.length === 0 &&
-      !loadingUserCompanies &&
-      !isFetchingUserCompanies &&
-      refetchUserCompanies &&
-      currentUserId
-    ) {
-      const interval = setInterval(() => {
-        refetchUserCompanies();
-      }, 10000);
-
-      return () => clearInterval(interval);
-    }
-  }, [
-    userWithCompaniesData?.data?.companies,
-    loadingUserCompanies,
-    isFetchingUserCompanies,
-    refetchUserCompanies,
-    currentUserId,
-  ]);
-
-  // Listen for secureStorage changes
-  useEffect(() => {
-    const handleStorageChange = () => {
-      if (
-        refetchUserCompanies &&
-        currentUserId &&
-        !loadingUserCompanies &&
-        !isFetchingUserCompanies
-      ) {
-        setTimeout(() => {
-          refetchUserCompanies();
-        }, 200);
-      }
-    };
-
-    window.addEventListener("secureStorageChange", handleStorageChange);
-    return () =>
-      window.removeEventListener("secureStorageChange", handleStorageChange);
-  }, [
-    refetchUserCompanies,
-    currentUserId,
-    loadingUserCompanies,
-    isFetchingUserCompanies,
-  ]);
-
-  // Check for company_created flag on mount
-  useEffect(() => {
-    if (
-      localStorage.getItem("company_created") &&
-      refetchUserCompanies &&
-      currentUserId &&
-      !loadingUserCompanies &&
-      !isFetchingUserCompanies
-    ) {
-      setTimeout(() => {
-        refetchUserCompanies();
-        localStorage.removeItem("company_created");
-      }, 300);
-    }
-  }, [
-    refetchUserCompanies,
-    currentUserId,
-    loadingUserCompanies,
-    isFetchingUserCompanies,
-  ]);
-
   const companies = userWithCompaniesData?.data?.companies || [];
-  const currentCompany = companies.find((c) => c.id === companyId);
+  const currentCompany = companies.find(
+    (c) => c.id === (selectedCompanyId || companyId)
+  );
 
-  // Get company details and stats
-  const { data: companyDetails, isLoading: loadingCompanyDetails } =
-    useGetCompanyDetailsQuery(companyId, {
-      skip: !companyId,
-    });
+  // Filter admin companies for the selector
+  const adminCompanies = companies.filter(
+    (company) => company?.role === COMPANY_ROLES.ADMIN
+  );
 
-  const { data: companyStats, isLoading: loadingCompanyStats } =
-    useGetCompanyStatsQuery(companyId, {
-      skip: !companyId,
-    });
+  // Get company stats
+  const { data: companyStats } = useGetCompanyStatsQuery(
+    selectedCompanyId || companyId,
+    {
+      skip: !(selectedCompanyId || companyId),
+    }
+  );
 
   // Get projects for the company
   const { data: projectsData, isLoading: loadingProjects } =
     useGetProjectsByCompanyQuery(
-      { companyId, page: 1, limit: 20, status: "" },
       {
-        skip: !companyId,
+        companyId: selectedCompanyId || companyId,
+        page: 1,
+        limit: 20,
+        status: "",
+      },
+      {
+        skip: !(selectedCompanyId || companyId),
       }
     );
 
   const projects = projectsData?.data || [];
+
+  // Auto-select first admin company if none selected
+  useEffect(() => {
+    if (
+      !selectedCompanyId &&
+      adminCompanies.length > 0 &&
+      adminCompanies[0]?.id
+    ) {
+      setSelectedCompanyId(adminCompanies[0].id);
+    }
+  }, [selectedCompanyId, adminCompanies]);
 
   if (loadingUserCompanies || loadingCurrentUser) {
     return (
@@ -195,24 +144,109 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
           It looks like you don't have access to any companies yet. Please
           contact your administrator or create a new company.
         </p>
-        <button
-          onClick={() => refetchUserCompanies()}
-          disabled={isFetchingUserCompanies}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${
-              isFetchingUserCompanies ? "animate-spin" : ""
-            }`}
-          />
-          <span>Refresh</span>
-        </button>
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
+      {/* Company Selector Header - Show if multiple admin companies */}
+      {adminCompanies.length > 1 && (
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 backdrop-blur-sm relative z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Company Dashboard
+              </h3>
+              <p className="text-slate-400 text-sm">
+                Admin of {adminCompanies.length} companies
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="relative z-50" ref={companySelectorRef}>
+                <button
+                  onClick={() => setShowCompanySelector(!showCompanySelector)}
+                  disabled={isFetchingUserCompanies}
+                  className="flex items-center space-x-3 bg-slate-700/50 text-white px-4 py-3 rounded-xl hover:bg-slate-600/50 transition-colors duration-200 border border-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Building2 className="h-5 w-5" />
+                  <span>
+                    {adminCompanies.find((c) => c.id === selectedCompanyId)
+                      ?.name ||
+                      companies.find((c) => c.id === selectedCompanyId)?.name ||
+                      currentCompany?.name ||
+                      "Select Company"}
+                  </span>
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+
+                {showCompanySelector && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-[9999] overflow-hidden">
+                    <div className="p-4">
+                      <h4 className="text-sm font-medium text-slate-300 mb-3">
+                        Select Company
+                      </h4>
+                      {adminCompanies.map((company) => {
+                        if (!company?.id) return null;
+
+                        return (
+                          <button
+                            key={company.id}
+                            onClick={async () => {
+                              // Don't update if it's the same company
+                              if (company.id === selectedCompanyId) {
+                                setShowCompanySelector(false);
+                                return;
+                              }
+
+                              setShowCompanySelector(false);
+
+                              // Update storage
+                              secureStorage.setItem("companyId", company.id);
+                              secureStorage.setItem(
+                                "companyRole",
+                                company.role
+                              );
+
+                              // Dispatch storage change event
+                              window.dispatchEvent(
+                                new CustomEvent("secureStorageChange")
+                              );
+
+                              // Navigate to refresh dashboard with new company data
+                              navigate("/dashboard", { replace: true });
+                            }}
+                            className={`w-full text-left p-3 rounded-lg transition-colors duration-200 mb-2 ${
+                              selectedCompanyId === company.id
+                                ? "bg-blue-600 text-white"
+                                : "text-slate-300 hover:bg-slate-700"
+                            }`}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 bg-slate-600 rounded-lg">
+                                <Building2 className="h-4 w-4 text-white" />
+                              </div>
+                              <div>
+                                <p className="font-medium">
+                                  {company.name || "Unnamed Company"}
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  Role: {company.role}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Company Header */}
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-6">
@@ -229,7 +263,7 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
                   {currentCompany?.slug}
                 </span>
                 <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
-                  {companyRole}
+                  {currentCompany?.role || companyRole}
                 </span>
               </div>
             </div>
@@ -237,15 +271,14 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
 
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => refetchUserCompanies()}
+              onClick={() => {
+                // Simple page refresh to reload all data
+                window.location.reload();
+              }}
               disabled={isFetchingUserCompanies || loadingUserCompanies}
               className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${
-                  isFetchingUserCompanies ? "animate-spin" : ""
-                }`}
-              />
+              <RefreshCw className="h-4 w-4" />
               <span>Refresh</span>
             </button>
 
@@ -331,7 +364,11 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
             </p>
           </div>
           <button
-            onClick={() => setShowCreateProject(true)}
+            onClick={() => {
+              console.log("🚀 Projects section New Project button clicked");
+              alert("Projects New Project button clicked - opening modal");
+              setShowCreateProject(true);
+            }}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
@@ -413,7 +450,7 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
               Manage your company's team and their roles
             </p>
           </div>
-          {companyRole === "ADMIN" && (
+          {(currentCompany?.role || companyRole) === "ADMIN" && (
             <button
               onClick={() => setShowAddEmployee(true)}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
@@ -424,7 +461,10 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
           )}
         </div>
 
-        <EmployeeList companyId={companyId} companyRole={companyRole} />
+        <EmployeeList
+          companyId={selectedCompanyId || companyId}
+          companyRole={currentCompany?.role || companyRole}
+        />
       </div>
 
       {/* Create Project Modal */}
@@ -438,7 +478,8 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
               ✕
             </button>
             <CreateProject
-              companyId={companyId}
+              companyId={selectedCompanyId || companyId}
+              companyName={currentCompany?.name || "Company"}
               onClose={() => setShowCreateProject(false)}
               onProjectCreated={() => {
                 setShowCreateProject(false);
@@ -452,8 +493,8 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
 
       {/* Project Dashboard Modal */}
       {selectedProjectId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="relative w-full max-w-7xl mx-auto h-full">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full h-full overflow-y-auto">
             <button
               onClick={() => setSelectedProjectId(null)}
               className="absolute top-4 right-4 text-white bg-slate-700 hover:bg-slate-600 rounded-full w-10 h-10 flex items-center justify-center transition-colors duration-200 border border-slate-600 z-10"
@@ -479,7 +520,7 @@ const CompanyDashboard = ({ companyId, companyRole }) => {
               ✕
             </button>
             <AddEmployee
-              companyId={companyId}
+              companyId={selectedCompanyId || companyId}
               onClose={() => setShowAddEmployee(false)}
               onEmployeeAdded={() => {
                 setShowAddEmployee(false);

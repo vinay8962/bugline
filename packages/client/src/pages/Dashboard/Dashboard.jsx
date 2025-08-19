@@ -250,7 +250,11 @@ const Dashboard = () => {
                 {companyRole}
               </span>
             </div>
-            <CompanyDashboard companyId={companyId} companyRole={companyRole} />
+            <CompanyDashboard
+              key={`${companyId}-${_refreshKey}`}
+              companyId={companyId}
+              companyRole={companyRole}
+            />
           </div>
         ) : (
           <div className="mb-8">

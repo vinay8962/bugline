@@ -67,16 +67,16 @@ export const requireCompanyAccess = asyncHandler(async (req, res, next) => {
   if (!companyId && projectId) {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      select: { company_id: true }
+      select: { company_id: true },
     });
-    
+
     if (!project) {
       return res.status(404).json({
         success: false,
         message: "Project not found",
       });
     }
-    
+
     companyId = project.company_id;
   }
 
@@ -171,6 +171,45 @@ export const requireCompanyRole = (requiredRoles) => {
 
 // Check if user can manage company (ADMIN role)
 export const requireCompanyAdmin = requireCompanyRole(["ADMIN"]);
+
+// Check if user is admin of the specific company in the request
+export const requireSpecificCompanyAdmin = asyncHandler(
+  async (req, res, next) => {
+    const { companyId } = req.params;
+
+    if (!companyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Company ID is required",
+      });
+    }
+
+    // Super admins bypass company role checks
+    if (req.user.global_role === "SUPER_ADMIN") {
+      return next();
+    }
+
+    // Check if user is admin of this specific company
+    const companyUser = await prisma.companyUser.findUnique({
+      where: {
+        user_id_company_id: {
+          user_id: req.user.id,
+          company_id: companyId,
+        },
+      },
+    });
+
+    if (!companyUser || companyUser.role !== "ADMIN") {
+      return res.status(403).json({
+        success: false,
+        message: "Company admin access required for this company",
+      });
+    }
+
+    req.companyUser = companyUser;
+    next();
+  }
+);
 
 // Check if user can manage bugs (ADMIN, DEVELOPER, QA)
 export const requireBugManagement = requireCompanyRole([

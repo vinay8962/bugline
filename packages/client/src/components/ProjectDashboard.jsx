@@ -16,6 +16,8 @@ import { setBugs } from "../features/bug/bugSlice.js";
 
 const ProjectDashboard = ({ projectId, onBack }) => {
   console.log("Project ID:", projectId);
+
+  // All hooks must be called before any conditional returns
   const {
     data: projectDetails,
     isLoading,
@@ -23,26 +25,30 @@ const ProjectDashboard = ({ projectId, onBack }) => {
   } = useGetProjectDetailsQuery(projectId);
 
   const dispatch = useDispatch();
+
+  // Safely get bugs and project data
+  const { bugs = [], ...project } = projectDetails?.data || {};
+
+  // useEffect hook must be called before any conditional returns
+  useEffect(() => {
+    if (bugs && bugs.length > 0) {
+      dispatch(setBugs(bugs));
+    }
+  }, [bugs, dispatch]);
+
   console.log(projectDetails);
 
-  // Fix: Add early return for loading and error states before destructuring
+  // Now we can have conditional returns after all hooks are called
   if (isLoading) return <LoadingSpinner />;
+
   console.log("Project Details:", projectDetails);
+
   if (error)
     return (
       <div className="text-center py-12 text-red-400">
         Failed to load project details
       </div>
     );
-
-  // Fix: Safely destructure with default values
-  const { bugs = [], ...project } = projectDetails?.data || {};
-
-  useEffect(() => {
-    if (bugs && bugs.length > 0) {
-      dispatch(setBugs(bugs));
-    }
-  }, [bugs, dispatch]);
 
   const stats = {
     total: bugs.length || 0,
@@ -53,7 +59,7 @@ const ProjectDashboard = ({ projectId, onBack }) => {
   };
 
   return (
-    <div className="bg-primary min-h-screen relative pb-10">
+    <div className="bg-primary min-h-screen relative pb-20">
       {/* Header */}
       <header className="border-b border-gray-700/30 bg-primary/5 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -104,7 +110,7 @@ const ProjectDashboard = ({ projectId, onBack }) => {
               Project Token:
             </span>{" "}
             <span className="font-mono text-green-400">
-              {project?.widgetToken || "YOUR_PROJECT_TOKEN"}
+              {project?.project_token || "YOUR_PROJECT_TOKEN"}
             </span>
             <br />
             <br />
@@ -112,7 +118,7 @@ const ProjectDashboard = ({ projectId, onBack }) => {
             <pre className="whitespace-pre-wrap mt-2 text-xs bg-black/30 p-2 rounded">{`<script src="https://cdn.bugline.co/widget/v1/widget.min.js"></script>
 <script>
   BugLine.init({
-    projectToken: '${project?.widgetToken || "YOUR_PROJECT_TOKEN"}',
+    projectToken: '${project?.project_token || "YOUR_PROJECT_TOKEN"}',
     position: 'bottom-right',
     autoErrorCapture: true
   });
@@ -208,7 +214,7 @@ const ProjectDashboard = ({ projectId, onBack }) => {
         </div>
 
         {/* Bug Report Navigation Button */}
-        <div className="flex justify-center mt-8">
+        <div className="flex justify-center mt-8 mb-8">
           <Link
             to="/dashboard/bug-report"
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
