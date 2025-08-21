@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCreateEmployeeMutation } from "../../services/userApi.js";
 import { showSuccess, showError } from "../../utils/notifications.jsx";
+import EmailVerify from "../../components/EmailVerify.jsx";
 
 // Mock constants since we don't have access to the actual shared module
 const COMPANY_ROLES = {
@@ -89,6 +90,7 @@ const AddEmployee = ({ onClose, companyId, onEmployeeAdded }) => {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
+  const [emailVerify, setEmailVerify] = useState(false);
 
   const [createEmployee, { isLoading: isSubmitting }] =
     useCreateEmployeeMutation();
@@ -267,7 +269,10 @@ const AddEmployee = ({ onClose, companyId, onEmployeeAdded }) => {
         result.status === "success"
       ) {
         showSuccess("Employee created successfully!");
-        onClose();
+
+        // Show email verification modal after successful employee creation
+        setEmailVerify(true);
+
         if (onEmployeeAdded) {
           onEmployeeAdded();
         }
@@ -286,6 +291,17 @@ const AddEmployee = ({ onClose, companyId, onEmployeeAdded }) => {
         submit: errorMessage,
       });
     }
+  };
+
+  const handleEmailVerified = () => {
+    showSuccess("Email verified successfully!");
+    setEmailVerify(true);
+    onClose(); // Close the main modal after email verification
+  };
+
+  const handleEmailVerifyClose = () => {
+    setEmailVerify(false);
+    onClose(); // Close the main modal if user cancels email verification
   };
 
   return (
@@ -522,6 +538,40 @@ const AddEmployee = ({ onClose, companyId, onEmployeeAdded }) => {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Email Verify Modal */}
+      {emailVerify && (
+        <motion.div
+          variants={backdrop}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-70"
+        >
+          <motion.div
+            variants={modal}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="relative max-w-md w-full mx-4 p-6 bg-gray-900 text-white shadow-lg rounded-xl border border-gray-700"
+          >
+            {/* Close Button for Email Verify Modal */}
+            <button
+              onClick={handleEmailVerifyClose}
+              className="absolute top-4 right-4 text-white bg-red-500 hover:bg-red-600 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+
+            <EmailVerify
+              email={formData.email}
+              onClose={handleEmailVerifyClose}
+              onVerified={handleEmailVerified}
+            />
+          </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

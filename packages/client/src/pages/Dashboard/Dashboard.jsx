@@ -77,7 +77,7 @@ const Dashboard = () => {
 
   if (!stats) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-primary flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-slate-300 text-lg">Loading your dashboard...</p>
@@ -117,7 +117,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-primary text-white">
       {/* Enhanced Header */}
       <header className="bg-slate-800/50 border-b border-slate-700/50 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -172,7 +172,7 @@ const Dashboard = () => {
                 </button>
 
                 {open && (
-                  <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-64 bg-primary border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden">
                     <div className="p-4 border-b border-slate-700">
                       <p className="text-sm text-slate-400">Signed in as</p>
                       <p className="text-white font-medium truncate">

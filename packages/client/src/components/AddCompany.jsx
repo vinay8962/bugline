@@ -66,9 +66,9 @@ const AddCompany = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-primary text-white">
       {/* Enhanced Header */}
-      <header className="bg-slate-800/50 border-b border-slate-700/50 backdrop-blur-xl">
+      <header className="bg-primary border-b border-slate-700/50 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center space-x-4">
             <Link to="/profile">
